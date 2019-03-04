@@ -35,6 +35,12 @@ _A practical guide to the data analysis workflow._
 
 ### Online Resources:
 
+#### Reproducible Research
+
+Gayle, V.J. (2017) An introduction to Jupyter Notebooks for Social Science Research. NCRM Online Resources. NCRM.
+[https://www.youtube.com/watch?v=Os3s1jwLAEI](https://www.youtube.com/watch?v=Os3s1jwLAEI) <br>
+_An overview of how to interleave code, results and narrative information in a single, reproducible document._
+
 #### Courses
 
 Data Scientist with R. [https://www.datacamp.com/tracks/data-scientist-with-r](https://www.datacamp.com/tracks/data-scientist-with-r) <br>
