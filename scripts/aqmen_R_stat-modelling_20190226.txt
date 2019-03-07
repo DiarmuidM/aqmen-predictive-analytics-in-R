@@ -1181,3 +1181,233 @@ nrow(lbtt) # 460 observations remaining in the data set
 
 summary(mod3 <- glm(num_transactions ~ tran_type + prop_type + prop_band + year, family="poisson", data=lbtt))
 # TASK: 
+
+
+
+### END OF ACTIVITY THREE [ACT003] ###
+
+
+
+##############################################
+
+
+##############################################
+
+
+options(scipen=999) # change formatting display of numbers (no scientific notation)
+
+install.packages("survival")
+install.packages("survminer")
+library(survminer) # load in graphing package for survival plots
+library(survival) # load in survival analysis package
+library(lubridate) # load in data wrangling package for dates
+library(tidyverse) # load in data wrangling package
+
+# 5. Duration Analysis
+
+# 5.1 A quick and dirty duration analysis
+
+
+# 5.2 Charity Survival
+
+# RQ: how long do charities survive? What factors predict organisational demise?
+# Data: Linked administrative data on English charities, which is an open data set provided by the Charity Commission [http://data.charitycommission.gov.uk/]
+# Why is it of interest?: the impact of the Great Recession on charity sustainability is not well understood (Clifford, 2017)
+
+
+# 5.2.1 Data Wrangling
+
+# Import data
+
+char_regd <- read_csv("./data_raw/extract_registration.csv", na = "") # load in registration data for charities
+# Note: we can tell R which values represent missing data; in this case blank records represent missing data (see data dictionary).
+
+View(char_regd)
+str(char_regd) # it looks like regdate and remdate are stored as datetime variables
+head(char_regd)
+
+# Calculate charity survival
+
+(cdate <- Sys.Date())
+cyear <- year(cdate) # get current year
+char_regd$regy <- year(char_regd$regdate) # extract year from registration date
+char_regd$remy <- year(char_regd$remdate) # year charity was removed from the Register
+
+char_regd <- char_regd %>% 
+  mutate(los = ifelse(!is.na(remy), remy - regy, NA))
+
+# There's a lot to unpack with the code above; let's work from the bottom up:
+# 1. We create a new variable called "los" (length of survival) based on a conditional.
+# 2. The condition is the first argument (i.e. for observations with no missing data for "remy").
+# 3. If the condition is met (i.e. TRUE), then "los" equals "remy - regy"; otherwise it takes the value NA.
+# 4. The new variable is added to the existing data set char_regd.
+
+hist(char_regd$los)
+char_regd[1:1000,] # view the first 1000 rows
+
+char_regd_merge <- char_regd %>% # keep selected variables, drop duplicates and sort by charity number
+  distinct(regno, .keep_all = TRUE) %>% 
+  select(regno, los, remy, regy) %>% 
+  arrange(regno)
+
+str(char_regd_merge)
+
+write_rds(char_regd_merge, "./temp/ew_los_201903.rds")
+
+
+# Merge with charity register with registration and area of operation data sets
+
+char_reg <- read_csv("./data_raw/extract_charity.csv", na = "") # load in charity register
+nrow(char_reg)
+# str(char_reg)
+
+char_reg <- char_reg %>% 
+  distinct(regno, .keep_all = TRUE) %>% 
+  select(regno:ha_no) %>% 
+  arrange(regno) # drop duplicates and unneccesary variables and sort the data set by charity number
+
+
+char_regd_merge <- read_rds("./temp/ew_los_201903.rds") # load in length of survival data set
+char_surv <- merge(char_reg, char_regd_merge, id = "regno")
+
+char_aoo <- read_rds("./data_raw/charity-aoo-reference-list-201902.rds") # load in area of operation data set
+View(char_aoo)
+
+table(char_aoo$aootype)
+char_aoo$aoo <- ordered(char_aoo$aootype, levels = c("B", "A", "D"), labels = c("Local", "Regional", "National")) # create an ordinal variable
+levels(char_aoo$aoo) # view categories of area of operation
+table(as.numeric(char_aoo$aoo)) # look at codes representing each category
+
+char_surv <- merge(char_surv, char_aoo, id = "regno") # merge with area of operation data
+
+nrow(char_surv) # we've lost some observations due to only having area of operation information for a subset of charities
+View(char_surv) # successful merge
+
+
+# Create variables necessary for duration model
+
+summary(char_surv$los) # our dependent/outcome variable is already defined
+
+# Covariates/predictors
+char_surv$subsid <- as.numeric(char_surv$subno > 0) # charity has subsidiaries
+
+table(char_surv$subsid) # dummy variable
+table(char_surv$aoo) # the reference category is "Local"
+
+
+# 5.2.2 Duration Model
+
+# Let's estimate a simple linear regression model of the length of survival
+
+mod1 <- lm(formula = los ~ aoo + subsid, data = char_surv) # regress income on legal form, area of operation, and age
+summary(mod1)
+
+# TASK: interpret the effects of the predictors on the outcome.
+
+# This duration model is hopelessly compromised by right-censored observations i.e. "(165594 observations deleted due to missingness)".
+# Basically, the model only refers to charities that have dissolved, not those still around. We could try and impute
+# values for how long these organisations survived (i.e. their current age) but this would introduce bias.
+
+# Our data are much better modelled using a survival analysis approach.
+
+
+# 5.2.3 Survival Analysis
+
+# Create the variables necessary for the model
+
+# Time
+char_surv$year <- char_surv$regy # use registration year as the time variable (this is fine as there are no gaps in this measure)
+
+# Event
+char_surv$diss <- as.numeric(char_surv$orgtype == "RM") # a charity is dissolved if its registration status == "RM"
+table(char_surv$diss) 
+
+# Survival time
+hist(char_surv$los) # currently this is only calculated for charities that have dissolved; let's also included charities that
+# are still operating:
+
+char_surv <- char_surv %>% 
+  mutate(st = ifelse(is.na(remy), 2019 - regy, remy - regy))
+# There's a lot to unpack with the code above:
+# 1. We create a new variable called "st" based on a conditional.
+# 2. The condition is the first argument (i.e. for observations with missing data for "remy").
+# 3. If the condition is met (i.e. TRUE), then "age" equals "2019 - regy"; otherwise remy - regy".
+# 4. The new variable is added to the existing data set char_surv.
+
+hist(char_surv$st)
+
+
+# Let's restate our questions in order to focus our analysis:
+
+# 1. What is the probability of surviving to a certain point in time?
+# 2. What is the average survival time?
+
+# 1. A Kaplan-Meier plot summarises the distribution of the survival time variable.
+
+Surv(char_surv$st, char_surv$diss)[1:10] # look at the survival time for the first ten observations
+# QUESTION: what do you think the plus sign ("+") signifies?
+
+x11()
+plot(survfit(Surv(st, diss) ~ 1, data = char_surv), 
+     xlab = "Years", 
+     ylab = "Overall survival probability")
+
+# QUESTION: what is the probability of surviving until 20 years old? HINT: trace your finger up from the x-axis...
+# REMEMBER: the survival curve is a probability distribution
+
+
+sest <- survfit(Surv(st, diss) ~ 1, data = char_surv)
+names(sest) # the survfit() function returns a number of variables that we can use to estimate survival probabilities:
+
+# What is the probability of surviving until 20 years old?
+
+summary(survfit(Surv(st, diss) ~ 1, data = char_surv), times = 20) # ~77% chance of making it to 20
+
+summary(survfit(Surv(st, diss) ~ 1, data = char_surv)) # for all time periods in the data set
+# n.risk = number of charities at risk of dissolution in that period.
+# n.event = number of dissolutions in that period.
+# survival = probability of dissolution in that period.
+# std.err, lower CI, upper C_ = standard error and 95% confidence intervals for the estimate of surivival probability.
+
+# 2. What is the average survival time?
+
+survfit(Surv(st, diss) ~ 1, data = char_surv) # just call this function again, without wrapping it in a summary() function
+
+median(char_surv$st[char_surv$diss==1], na.rm = TRUE)
+# The above median() function calculates the average survival time for charities that have dissolved.
+# This ia an incorrect estimate as it ignores the fact that censored charities also contribute survival time.
+
+
+# Comparing survival times between types of charities
+
+# Let's explore whether survival times vary by area of operation:
+
+x11()
+ggsurvplot(
+  fit = survfit(Surv(st, diss) ~ aoo, data = char_surv), 
+  xlab = "Years",
+  ylab = "Overall survival probability",
+  legend.title = "Area of Operation",
+  legend.labs = c("Local", "Regional", "National"),
+  break.x.by = 10, 
+  censor = FALSE,
+  risk.table = TRUE,
+  risk.table.y.text = FALSE)
+
+# QUESTION: which type of charity has the best chance of survival? Does this vary over time?
+
+summary(survfit(Surv(st, diss) ~ aoo, data = char_surv), times = 20) # the formatting is a bit rubbish but we can still interpret the numbers
+
+# We can conduct a log-rank test to see if there is a statistically significant difference in overall survival 
+# by area of operation:
+
+survdiff(Surv(st, diss) ~ aoo, data = char_surv)
+
+# QUESTION: can we conclude that there are statistically significant differences in overall survival by area of operation?
+
+
+
+
+
+
+
