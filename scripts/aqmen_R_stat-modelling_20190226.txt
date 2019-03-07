@@ -1194,14 +1194,12 @@ summary(mod3 <- glm(num_transactions ~ tran_type + prop_type + prop_band + year,
 ##############################################
 
 
-options(scipen=999) # change formatting display of numbers (no scientific notation)
-
-install.packages("survival")
-install.packages("survminer")
 library(survminer) # load in graphing package for survival plots
 library(survival) # load in survival analysis package
 library(lubridate) # load in data wrangling package for dates
 library(tidyverse) # load in data wrangling package
+library(broom)
+library(aod)
 
 # 5. Duration Analysis
 
@@ -1337,12 +1335,12 @@ char_surv <- char_surv %>%
 hist(char_surv$st)
 
 
-# Let's restate our questions in order to focus our analysis:
+# Let's state some questions in order to focus our analysis:
 
 # 1. What is the probability of surviving to a certain point in time?
 # 2. What is the average survival time?
 
-# 1. A Kaplan-Meier plot summarises the distribution of the survival time variable.
+# 1. A Kaplan-Meier (KM) plot summarises the distribution of the survival time variable.
 
 Surv(char_surv$st, char_surv$diss)[1:10] # look at the survival time for the first ten observations
 # QUESTION: what do you think the plus sign ("+") signifies?
@@ -1406,8 +1404,113 @@ survdiff(Surv(st, diss) ~ aoo, data = char_surv)
 # QUESTION: can we conclude that there are statistically significant differences in overall survival by area of operation?
 
 
+# Regression Model of Survival Hazard
+
+# The Cox regression model assesses the relative effect of predictors on the variation in an outcome.
+
+# Instead of modelling the duration as the dependent variable, a Cox model estimates the hazard of the event occuring.
+# In our example, the dependent variable will be the hazard (i.e. log odds relative to a reference group)
+# of dissolution for a charity.
+
+# Some key assumptions of the model:
+# - non-informative censoring
+# - proportional hazards i.e. the effect of a predictor does not vary over time
+
+cox_mod <- coxph(Surv(st, diss) ~ aoo, data = char_surv) # estimate the model
+summary(cox_mod) # Rsquare is extremely low - this model has very little explanatory power
+# We see that the log odds of dissolution are higher for Regional charities compared to Local organisations;
+# National charities have lower log odds than their Local peers.
+
+# Check if area of operation is statistically significant overall
+wald.test(b = coef(cox_mod), Sigma = vcov(cox_mod), Terms = 1:2) 
+# Yes it is. "1:2" identifies the number of the variable in the model.
+
+cox_tidy <- tidy(cox_mod) # tidy the results of the Cox regression
+cox_tidy$term <- str_replace(cox_tidy$term, "aoo.L", "Regional")
+cox_tidy$term <- str_replace(cox_tidy$term, "aoo.Q", "National")
+
+cox_tidy # view the tidied results of the Cox regression
+
+# We can plot the Cox hazard function (analogous to the KM plot)
+cox_curve <- survfit(cox_mod)
+x11()
+plot(cox_curve) # not much difference between the KM and Cox plots (unsurprising given the model only includes one predictor)
+
+
+# Now let's interpret the log odds as a hazard ratio instead
+summary(cox_mod)
+# The exp(coef) field displays the hazard ratios: Regional charities have a hazard of dissolution 1.12 times higher than
+# Local charities.
+
+# EXERCISE:
+# 1. Create a variable measuring which decade a charity was registered in.
+# 2. Plot the KM curves for categories of this variable.
+# 3. Add this variable to the Cox regression model and interpret its effect on the outcome.
+
+# If you get stuck then scroll to the bottom of this activity for a solution.
+#
+#
+#
+#
+#
+#
+#
+#
+#
+#
+# Keep going...
+#
+#
+#
+#
+#
+#
+#
+#
+# SOLUTION:
+
+min(char_surv$regy, na.rm = TRUE)
+max(char_surv$regy, na.rm = TRUE)
+
+# Create a categorical variable from registered year:
+char_surv$decade <- cut(char_surv$regy, seq(1960,2019, 9), 
+                        labels = c("1960", "1970", "1980", "1990", "2000", "2010")) 
+table(char_surv$decade)
+
+# Plot KM curve
+x11()
+ggsurvplot(
+  fit = survfit(Surv(st, diss) ~ decade, data = char_surv), 
+  xlab = "Years",
+  ylab = "Overall survival probability",
+  legend.title = "Area of Operation",
+  legend.labs = c("1960", "1970", "1980", "1990", "2000", "2010"),
+  break.x.by = 10, 
+  censor = FALSE,
+  risk.table = TRUE,
+  risk.table.y.text = FALSE)
+
+# Estimate a Cox ph model
+cox_mod <- coxph(Surv(st, diss) ~ aoo + decade, data = char_surv) # estimate the model
+summary(cox_mod)
+
+cox_curve <- survfit(cox_mod)
+x11()
+plot(cox_curve)
+
+# Obviously this is a slightly strange example: of course survival time is related to when a charity was founded.
+# Still, it highlights some of the many issues you need to grapple with when estimating these types of models.
+
+
+### END OF ACTIVITY FIVE ###
 
 
 
+##############################################
 
 
+##############################################
+
+
+
+# 6. [ACT006] #
