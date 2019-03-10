@@ -182,7 +182,7 @@ file.info("./data_raw/sampdata.csv") # displays some basic file information
 # A package only needs to be installed once, but you will need to load it in every time you launch an R session.
 
 my_packages <- c("tidyverse", "car", "haven", "broom", "ggplot2", "lubridate",
-	"aod", "ResourceSelection", "stringr", "descr") # create a list of desired packages
+	"aod", "ResourceSelection", "stringr", "descr", "DescTools") # create a list of desired packages
 
 install.packages(my_packages, repos = "http://cran.rstudio.com") # install packages from the CRAN repository
 
@@ -206,6 +206,7 @@ library(haven) # data wrangling package for importing Stata data files into R
 library(ResourceSelection) # Hosmer and Lemeshow goodness-of-fit package
 library(stringr) # data wrangling package for working with strings (i.e. text)
 library(descr) # data analysis package for categorical variables
+library(DescTools) # data analysis package for summary statistics
 
 # A final note about packages: you'll see mention of performing functions or tasks using base R. This means drawing on the functions that come
 # as standard with your version of R. install.packages() and write.csv() are examples of base R functions.
@@ -812,7 +813,104 @@ cor.test(auto$price, auto$weight) # statistical significance test of Pearson r c
 
 # 2. Fundamental Statistical Concepts #
 
+# In this section you will learn how to conduct a range of univariate, bivariate and multivariate analyses, including
+# tests of hypotheses and statistical significance.
 
+# A note about the data used in this activity: 
+# - The files have been specially created by AQMEN for training and MUST not be used in 'real life'.
+# - Do not make copies of these files or distribute them to others.
+
+# We're using these data sets as they are in good shape for analysis, saving us the trouble of getting our data into shape.
+
+# The rest of the activities will employ real, messy data from a variety of open data sources.
+
+
+# 2.1 Importing and Exploring Data
+
+aqmen_data <- read_dta("./data_raw/adrc_s_training_data4.dta") # load in the training data using the read_dta() function
+
+# Expore data
+
+View(aqmen_data) # browse the data set
+head(aqmen_data) # view the first few rows of the data set
+tail(aqmen_data) # view the last few rows of the data set
+names(aqmen_data) # list of variable names
+str(aqmen_data) # examine the structure of the data set
+attributes(aqmen_data) # list the attributes (i.e. metadata) of the data set
+ncol(aqmen_data) # number of columns
+nrow(aqmen_data) # number of rows
+order(aqmen_data$id) # sort the data set by ascending order of unique id
+
+
+# 2.2 Univariate Analysis
+
+# 2.2.1 Metric (numeric) variables
+
+summary(aqmen_data$workhours) # summary statistics for the number of hours worked per week
+# TASK: make some notes on these results.
+
+mean(aqmen_data$workhours, na.rm = TRUE) # calculate the mean
+# QUESTION: why do include the na.rm = TRUE option? What happens if you remove it?
+
+t.test(aqmen_data$workhours, na.rm = TRUE) # calculate 95% confidence intervals for the mean of workhours
+# See the help documentation for how you can specify alternative confidence levels.
+
+hist(aqmen_data$workhours) # draw a histogram of workhours
+# QUESTION: what is the mode of this distribution (i.e. what is the most common value for workhours)?
+# QUESTION: is the distribution positively or negatively skewed?
+
+
+# 2.2.1 Categorical variables
+
+table(aqmen_data$sex) # frequency table of respondent sex; 1 = female, 2 = male
+ftab_sex <- table(aqmen_data$sex) # store the frequency table in an object to make plotting easier
+barplot(ftab_sex) # create a basic bar chart
+
+summary(as.factor(aqmen_data$sex)) # summary() function also works as long as we tell R that sex is a factor (categorical) variable
+
+prop.table(ftab_sex) # display a table of proportions instead of frequencies
+# TASK: replace 'ftab_sex' with 'aqmen_data$sex'; what happens?
+
+# TASK: produce a frequency table and bar chart of respondent level of education (educ).
+
+
+# 2.3 Bivariate Analysis
+
+# 2.3.1 Metric (numeric) variables
+
+# Is there an association between working hours and age?
+summary(aqmen_data$workhours)
+summary(aqmen_data$age)
+
+p <- ggplot(data = aqmen_data, mapping = aes(x = age, y = workhours)) # use ggplot() function to graph association
+p + geom_point() # display the graph
+
+# QUESTION: is there an association between age and working hours per week? Why or why not?
+
+# Let's summarise the strength of the association using an appropriate correlation statistic:
+cor(aqmen_data$age, aqmen_data$workhours, use = "complete.obs") # Pearson correlation coefficient
+# use = "complete.obs" ensures missing values are overlooked when calculating the correlation coefficient.
+
+# QUESTION: is the correlation weak or strong?
+
+# We can select a different correlation coefficient if we have ranking variables:
+hrdata <- read_csv("./data_raw/hrdata.csv")
+
+p <- ggplot(data = hrdata, mapping = aes(x = sick, y = sales)) # use ggplot() function to graph association
+p + geom_point() # display the graph
+# It appears that individuals with the least sales take the most sick days.
+
+cor(hrdata$sick, hrdata$sales, method = "spearman", use = "complete.obs") # Spearman's rank correlation coefficient
+# QUESTION: is the correlation weak or strong? In which direction is the association?
+
+cor(hrdata$sick, hrdata$sales, use = "complete.obs") # Pearson's r correlation coefficient
+# QUESTION: are the two correlation estimates similar in this instance?
+
+
+###
+# FINISHED HERE [10/03/2019]
+#
+###
 
 
 
