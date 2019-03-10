@@ -182,7 +182,7 @@ file.info("./data_raw/sampdata.csv") # displays some basic file information
 # A package only needs to be installed once, but you will need to load it in every time you launch an R session.
 
 my_packages <- c("tidyverse", "car", "haven", "broom", "ggplot2", "lubridate",
-	"aod", "ResourceSelection", "stringr") # create a list of desired packages
+	"aod", "ResourceSelection", "stringr", "descr") # create a list of desired packages
 
 install.packages(my_packages, repos = "http://cran.rstudio.com") # install packages from the CRAN repository
 
@@ -197,7 +197,7 @@ library(tidyverse) # load in the "tidyverse" package of data wrangling functions
 ?tidyverse
 vignette("tidyverse")
 
-library(car) # data wrangling package, particularly good for categorical variables
+library(car) # data wrangling package, particularly good for recoding categorical variables
 library(broom) # extract model results
 library(ggplot2) # data visualisation package
 library(lubridate) # data wrangling package for dates
@@ -205,6 +205,7 @@ library(aod) # statistical model diagnostic package
 library(haven) # data wrangling package for importing Stata data files into R
 library(ResourceSelection) # Hosmer and Lemeshow goodness-of-fit package
 library(stringr) # data wrangling package for working with strings (i.e. text)
+library(descr) # data analysis package for categorical variables
 
 # A final note about packages: you'll see mention of performing functions or tasks using base R. This means drawing on the functions that come
 # as standard with your version of R. install.packages() and write.csv() are examples of base R functions.
@@ -736,23 +737,93 @@ options(digits=3) # change a specific option (i.e. number of digits to print on 
 options(max.print = 9999) # set maxmimum number of rows to print to the console as 9999
 
 
-# 1.11 Data Wrangling Examples #
+# 1.11 Predictive Analytics Examples #
 
 # Congratulations on getting through the technical (boring) bit of the activity. To whet your appetite, here are
 # some examples of the techniques you will learn over the course of the workshop.
 
 # Import data
 
-# Export data
+auto <- read_csv("./data_raw/auto.csv") # load in the (in)famous Stata "auto" data
 
-# Create a data frame
+# Expore data
 
-# ETC
+View(auto) # browse the data set
+head(auto) # view the first few rows of the data set
+tail(auto) # view the last few rows of the data set
+names(auto) # list of variable names
+str(auto) # examine the structure of the data set
+attributes(auto) # list the attributes (i.e. metadata) of the data set
+ncol(auto) # number of columns
+nrow(auto) # number of rows
+order(auto$make) # sort the data set by ascending order of car make (returns row number)
+
+# Univariate analysis
+
+hist(auto$price) # metric variable
+summary(auto$price)
+
+ftable <- table(auto$foreign) # frequency table of categorical variable
+barplot(ftable)
+
+# Bivariate analysis
+
+p <- ggplot(data = auto, mapping = aes(x = weight, y = price))
+p + geom_point() # association between car price and weight
+
+cor(auto$price, auto$weight) # Pearson correlation coefficient
+
+table(auto$foreign, auto$rep78) # crosstabulation of car status and repair record
+CrossTable(auto$foreign, auto$rep78, prop.c = TRUE, prop.r = FALSE, prop.t = FALSE, prop.chisq = FALSE) 
+
+# Multivariate analysis
+
+auto$expensive <- auto$price > 8000
+mytable <- table(auto$foreign, auto$rep78, auto$expensive) # three-way table
+ftable(mytable) # display the results of the three-way table in a more print-friendly format
+
+aggregate(price ~ foreign + rep78, data = auto, mean) # table of means i.e. average price for each category of foreign and rep78
+
+auto %>% 
+  group_by(foreign, rep78) %>% 
+  summarise(mean = mean(price), sd = sd(price)) # same way of producing results of aggregate() function
+
+# Hypothesis testing
+
+t.test(auto$price, mu = 5000) # one-sample test of means
+t.test(price ~ foreign, data = auto) # two-sample independent test of means
+
+cor.test(auto$price, auto$weight) # statistical significance test of Pearson r coefficient
+
+# Don't worry if some of the results and tests are difficult to interpret; this section is just to give you a taste
+# of the types of analyses we can conduct in R. Activity Two will shine light on the meaning and use of these statistics
+# tests.
+
+
+### END OF ACTIVITY ONE [ACT001] ###
+
 
 ##############################################
 
 
 ##############################################
+
+
+
+# 2. Fundamental Statistical Concepts #
+
+
+
+
+
+### END OF ACTIVITY TWO [ACT002] ###
+
+
+##############################################
+
+
+##############################################
+
 
 
 # 3. Statistical Models #
