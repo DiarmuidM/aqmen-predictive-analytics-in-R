@@ -3,7 +3,7 @@
 # http://www.aqmen.ac.uk/
 #
 # 
-# Predictive Data Analytics
+# Predictive Analytics
 # 
 # R Workshop (March 2019)
 # 
@@ -169,7 +169,8 @@ file.info("./data_raw/sampdata.csv") # displays some basic file information
 # A package only needs to be installed once, but you will need to load it in every time you launch an R session.
 
 my_packages <- c("tidyverse", "car", "haven", "broom", "ggplot2", "lubridate",
-	"aod", "ResourceSelection", "stringr", "descr", "DescTools", "plm", "magrittr") # create a list of desired packages
+	"aod", "ResourceSelection", "stringr", "descr", "DescTools", "plm", 
+	"magrittr", "survminer", "survival") # create a list of desired packages
 
 install.packages(my_packages, repos = "http://cran.rstudio.com") # install packages from the CRAN repository
 
@@ -192,6 +193,8 @@ library(stringr) # data wrangling package for working with strings (i.e. text)
 library(descr) # data analysis package for categorical variables
 library(DescTools) # data analysis package for summary statistics
 library(magrittr) # package for writing efficient code
+library(survminer) # load in graphing package for survival plots
+library(survival) # load in survival analysis package
 
 library(plm) # package for panel data regression models
 ?plm # view help documentation for this package
@@ -460,7 +463,7 @@ cat(x, y, z, fill = 1) # the fill option specifies line width
 
 x <- "The R package is great"
 sprintf("You know what? %s", x) # think of "%s" as a placeholder for a string stored in an object
-TASK: call the help documentation for the "sprintf()" function.
+# TASK: call the help documentation for the "sprintf()" function.
 
 y <- 0
 sprintf("You know what? I had %d beers last night", y)
@@ -480,7 +483,7 @@ nchar(c("How", "many", "characters", "are", "in", "this", "string?"))
 string2 <- 'If I want to include a "quote" inside a string, I use single quotes'
 string3 <- "\""
 string4 <- "\'" # if we want to include a single or double quote in our string we use the backslash (\) to escape the character
-TASK: include a backslash in a string.
+# TASK: include a backslash in a string.
 
 x <- c("\"", "\\")
 x
@@ -624,9 +627,11 @@ summary(ses_2)
 droplevels(ses_2)
 
 
-# 1.4 Saving Files #
+# 1.4 Saving R Files #
 
-# I need to figure this out in the context of creating R project files.
+# This is quite simple in R: simply press Ctrl + S or select File > Save from the menu.
+
+# We only need to save R scripts, as the .RProj file does not need updating.
 
 
 # 1.5 Getting Help #
@@ -677,9 +682,12 @@ apropos("sum") # returns all objects in the global environment that contain the 
 # 1.8 Debugging #
 
 # This is the computer science term for dealing with code issues. R likes to tell you when something is not quite right,
-and not always in an intelligble manner. As progress with this workshop, you are likely to encounter the following results:
+# and not always in an intelligble manner. As progress with this workshop, you are likely to encounter the following results:
+
 #	- message: R is communicating a diagnostic message relating to your code; your commands still execute.
+
 #	- warning: R is highlighting an error/issue with your code, your commands still execute but the warnings need addressing.
+
 #	- error: R is telling you there has been a fatal error with your code; your commands do not execute.
 
 # Let's look at a simple example:
@@ -718,6 +726,7 @@ help(options)
 options() # wide range of options for displaying results etc
 options(digits=3) # change a specific option (i.e. number of digits to print on output)
 options(max.print = 9999) # set maxmimum number of rows to print to the console as 9999
+options(scipen = 999) # surpress display of scientific notation
 
 
 # 1.11 Predictive Analytics Examples #
@@ -739,7 +748,6 @@ str(auto) # examine the structure of the data set
 attributes(auto) # list the attributes (i.e. metadata) of the data set
 ncol(auto) # number of columns
 nrow(auto) # number of rows
-order(auto$make) # sort the data set by ascending order of car make (returns row number)
 
 # Univariate analysis
 
@@ -769,7 +777,7 @@ aggregate(price ~ foreign + rep78, data = auto, mean) # table of means i.e. aver
 
 auto %>% 
   group_by(foreign, rep78) %>% 
-  summarise(mean = mean(price), sd = sd(price)) # same way of producing results of aggregate() function
+  summarise(mean = mean(price), sd = sd(price)) # same way of producing the results of the aggregate() function
 
 # Hypothesis testing
 
@@ -807,7 +815,7 @@ cor.test(auto$price, auto$weight) # statistical significance test of Pearson r c
 # The rest of the activities will employ real, messy data from a variety of open data sources.
 
 
-# 2.1 Importing and Exploring Data
+# 2.1 Importing and Exploring Data #
 
 aqmen_data <- read_dta("./data_raw/adrc_s_training_data4.dta") # load in the training data using the read_dta() function
 
@@ -821,10 +829,9 @@ str(aqmen_data) # examine the structure of the data set
 attributes(aqmen_data) # list the attributes (i.e. metadata) of the data set
 ncol(aqmen_data) # number of columns
 nrow(aqmen_data) # number of rows
-order(aqmen_data$id) # sort the data set by ascending order of unique id
 
 
-# 2.2 Univariate Analysis
+# 2.2 Univariate Analysis #
 
 # 2.2.1 Metric (numeric) variables
 
@@ -856,7 +863,7 @@ prop.table(ftab_sex) # display a table of proportions instead of frequencies
 # TASK: produce a frequency table and bar chart of respondent level of education (educ).
 
 
-# 2.3 Bivariate Analysis
+# 2.3 Bivariate Analysis #
 
 # 2.3.1 Metric (numeric) variables
 
@@ -895,6 +902,29 @@ cor(hrdata$sick, hrdata$sales, use = "complete.obs") # Pearson's r correlation c
 ###
 
 
+# 2.5 Exploratory Data Analysis
+
+# It is good practice to quickly and systematically explore your data in order to identify analytical possibilities.
+
+# This process is commonly known as Exploratory Data Analysis (EDA) and involves transforming (summarsing existing
+# variables, creating new ones, filtering observations etc), visualising (producing plots) and modelling (building simple statistical 
+# models) your data. 
+
+# Grolemund and Wickham (2017) describe EDA as follows:
+#	1. Generate questions about your data.
+#	2. Search for answers by visualising, transforming, and modelling your data.
+#	3. Use what you learn to refine your questions and/or generate new questions.
+
+# EDA is NOT a substitute for employing an appropriate research design (i.e. you are not 'fishing' for research questions or statistical significance).
+
+# Some tips of what to look for when performing EDA:
+#	- how are the values of your variables distributed? 
+#	- which values are most common? Which are most rare? Are there clusters in your data?
+#	- are there gaps in the values of a variable?
+#	- how do the values of two variables covary?
+#	- what process could generate patterns between two variables? Random chance?
+#	- how strong is the association between two variables? In what direction does it point? Does the pattern hold when you look at subpopulations?
+
 
 ### END OF ACTIVITY TWO [ACT002] ###
 
@@ -906,7 +936,7 @@ cor(hrdata$sick, hrdata$sales, use = "complete.obs") # Pearson's r correlation c
 
 
 
-# 3. Statistical Models #
+# 3. Statistical Models I and II [ACT003] #
 
 # This section demonstrates how to construct, interpret and diagnose three common types of statistical models:
 #	- linear (for metric outcomes)
@@ -1333,12 +1363,48 @@ nrow(lbtt) # 460 observations remaining in the data set
 
 summary(mod3 <- glm(num_transactions ~ tran_type + prop_type + prop_band + year, family="poisson", data=lbtt))
 # TASK: 
+### FINISHED HERE!
 
 
 
 ### END OF ACTIVITY THREE [ACT003] ###
 
 
+##############################################
+
+
+##############################################
+
+
+# AND NOW FOR SOMETHING COMPLETELY DIFFERENT
+
+# Making a near-perfect Yorkshire Pudding - a la Vernon Gayle #
+
+# 3 eggs
+# 115g plain flour
+# 285ml milk
+# 12 tablespoons vegetable oil / I prefer beef dripping
+
+# 1. Whisk the eggs, flour, salt, and milk together really well in a bowl 
+to make your batter. 
+
+# 2. Pour the batter into a jug, and let it sit for 30 minutes before you use it. 
+
+# 3. Turn your oven up to the highest setting and place the baking tray in the 
+oven to heat up for 5 minutes. 
+
+# 4. Place 1 table spoon of oil in each indentation, 
+and put the tray back into the oven and heat until oil is very hot.
+ 
+# 5. Open oven door, slide the tray out, and carefully pour the batter in. 
+
+# 6. Close the door and cook for 15 minutes without opening the oven door. 
+
+# Serve immediately with roast beef (or similar) veg and gravy.
+
+
+### END OF DAY ONE ###
+
 
 ##############################################
 
@@ -1346,8 +1412,14 @@ summary(mod3 <- glm(num_transactions ~ tran_type + prop_type + prop_band + year,
 ##############################################
 
 
+### BEGINNING OF DAY TWO ###
 
-#	4. Longitudinal Data Analysis [ACT004] #
+
+# REMINDER: this is a new R session and you need to reload (but not reinstall) the packages you need
+# for the upcoming activities. E.g. library(tidyverse)
+
+
+# 4. Longitudinal Data Analysis [ACT004] #
 
 # In this section we estimate predictive models for panel (repeated contacts) data.
 
@@ -1467,8 +1539,7 @@ exp(0.000733) - 1 # calculate % decrease in income for a one-unit change in age
 # QUESTION: do you think age has a meaningful effect on charity income?
 
 # TIP: fixed effects models do not work well when there is minimal within-unit variation; in our example,
-# age only changes by one year and this may be too small a change to influence the outcome.
-
+# age only changes by one year per observation and this may be too small a change to influence the outcome.
 
 # Store the results of the model for comparison with other approaches later:
 
@@ -1606,8 +1677,19 @@ fe_fit
 # The R-squared statistic is highest for the random effects model.
 
 
+# 4.6.5 Model coefficients
+
+ols
+be
+fe
+re
+
+# Note the estimates of the coefficients (i.e. the effects of the predictors on the outcome) change
+# across the different models.
+
+
 # EXERCISE:
-# - include the variable "year" as a predictor in the fixed and random effects models.
+# - include the variable "year" as a categorical predictor in the fixed and random effects models.
 # - graph predicted values for income using the results of the random effects model; HINT:
 #   use the augment() function to capture observation-level model statistics.
 # - restrict the analysis to charities that are present in every year in the data set.
@@ -1622,14 +1704,7 @@ fe_fit
 
 ##############################################
 
-# MOVE THESE TO THE BEGINNING OF THE WORKSHOP!
 
-library(survminer) # load in graphing package for survival plots
-library(survival) # load in survival analysis package
-library(lubridate) # load in data wrangling package for dates
-library(tidyverse) # load in data wrangling package
-library(broom)
-library(aod)
 
 # 5. Duration Analysis
 
@@ -1759,6 +1834,7 @@ hist(char_surv$los) # currently this is only calculated for charities that have 
 
 char_surv <- char_surv %>% 
   mutate(st = ifelse(is.na(remy), 2019 - regy, remy - regy))
+
 # There's a lot to unpack with the code above:
 # 1. We create a new variable called "st" based on a conditional.
 # 2. The condition is the first argument (i.e. for observations with missing data for "remy").
@@ -1946,4 +2022,28 @@ plot(cox_curve)
 
 
 
-# 6. [ACT006] #
+
+# Final Thoughts #
+
+# Congratulations on progressing through the workshop. Our aim was to equip you, as rapidly and painlessly as possible,
+# with a proficiency in predictive analytics using R .
+
+# While you have covered a great deal of material and skills, there is a bigger and badder world of R programming and wrangling out there.
+
+# Take a look at some of the suggested resources on workshop Github repository [https://github.com/DiarmuidM/aqmen-data-wrangling-in-R/tree/master/resources].
+
+# Hopefully this workshop has gone some way to convincing you of the value of adopting
+# social science approaches and tools for data science work; if not then let us know how we can improve;
+# if so then please engage with us on further topics and tools e.g. Social Network Analysis, Reproducible Data Analytics.
+
+# Good luck with future data wrangling and analytics work.
+
+
+# "Big wheels rolling through fields
+# Where sunlight streams
+# Meet me in a land of hope and dreams"
+
+# - Bruce Springsteen, Land of Hope and Dreams (2012)
+
+
+########################################### FIN ##################################################

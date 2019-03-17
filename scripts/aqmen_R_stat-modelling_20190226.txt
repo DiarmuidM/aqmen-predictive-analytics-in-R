@@ -3,7 +3,7 @@
 # http://www.aqmen.ac.uk/
 #
 # 
-# Predictive Data Analytics
+# Predictive Analytics
 # 
 # R Workshop (March 2019)
 # 
@@ -73,9 +73,8 @@
 
 #	5. Analysing Durations: how to analyse outcomes where the unit of observation is time or a duration [ACT005]
 
-#	6. Modelling Trends: an introduction to time-series analysis [ACT006]
+#	6. Hackathon: two blocks of time where participants will tackle a data analysis challenge using administrative data [ACT007] [ACT006]
 
-#	7. Hackathon: two blocks of time where participants will tackle a data analysis challenge using administrative data [ACT007]
 
 # If you want to jump to a section: press Ctrl + F and search for the activity code e.g. [ACT001].
 
@@ -157,18 +156,6 @@ file.info("./data_raw/sampdata.csv") # displays some basic file information
 
 # TASK: move the files from the workshop Dropbox folder to the "data_raw" directory you just created.
 
-# R functions used in this section:
-
-#	- getwd() - provide working directory location
-#	- c() - create a vector of values or objects
-#	- print() - display information on the console
-#	- file.create() - create a file
-#	- write.csv() - export a csv file to a directory
-#	- dir.create() - create a directory
-#	- dir() - list all files in a directory
-#	- head() - list the first few rows (values) of a data frame (object)
-#	- file.info() - display information about a file
-
 
 # 0.2 Installing Packages #
 
@@ -182,7 +169,8 @@ file.info("./data_raw/sampdata.csv") # displays some basic file information
 # A package only needs to be installed once, but you will need to load it in every time you launch an R session.
 
 my_packages <- c("tidyverse", "car", "haven", "broom", "ggplot2", "lubridate",
-	"aod", "ResourceSelection", "stringr", "descr", "DescTools") # create a list of desired packages
+	"aod", "ResourceSelection", "stringr", "descr", "DescTools", "plm", 
+	"magrittr", "survminer", "survival") # create a list of desired packages
 
 install.packages(my_packages, repos = "http://cran.rstudio.com") # install packages from the CRAN repository
 
@@ -194,11 +182,8 @@ installed.packages() # check which packages have been installed
 # 0.3 Loading Packages #
 
 library(tidyverse) # load in the "tidyverse" package of data wrangling functions
-?tidyverse
-vignette("tidyverse")
-
 library(car) # data wrangling package, particularly good for recoding categorical variables
-library(broom) # extract model results
+library(broom) # package for extracting model results
 library(ggplot2) # data visualisation package
 library(lubridate) # data wrangling package for dates
 library(aod) # statistical model diagnostic package
@@ -207,6 +192,12 @@ library(ResourceSelection) # Hosmer and Lemeshow goodness-of-fit package
 library(stringr) # data wrangling package for working with strings (i.e. text)
 library(descr) # data analysis package for categorical variables
 library(DescTools) # data analysis package for summary statistics
+library(magrittr) # package for writing efficient code
+library(survminer) # load in graphing package for survival plots
+library(survival) # load in survival analysis package
+
+library(plm) # package for panel data regression models
+?plm # view help documentation for this package
 
 # A final note about packages: you'll see mention of performing functions or tasks using base R. This means drawing on the functions that come
 # as standard with your version of R. install.packages() and write.csv() are examples of base R functions.
@@ -214,13 +205,6 @@ library(DescTools) # data analysis package for summary statistics
 # For the purposes of data analysis (and most other data related tasks, frankly), we will not use base R functions; the reasons will become clear
 # as we progress but it is worth noting that there is more than one way to skin a cat.
 
-# R functions used in this section:
-
-#	- install.packages() - install R packages
-#	- installed.packages() - display installed R packages
-#	- .libPaths() - display directory of installed R packages
-#	- library() - load in R package
-#	- vignette() - view examples of how to use the function/package (not available for all functions/packages)
 
 ##############################################
 
@@ -479,7 +463,7 @@ cat(x, y, z, fill = 1) # the fill option specifies line width
 
 x <- "The R package is great"
 sprintf("You know what? %s", x) # think of "%s" as a placeholder for a string stored in an object
-TASK: call the help documentation for the "sprintf()" function.
+# TASK: call the help documentation for the "sprintf()" function.
 
 y <- 0
 sprintf("You know what? I had %d beers last night", y)
@@ -499,7 +483,7 @@ nchar(c("How", "many", "characters", "are", "in", "this", "string?"))
 string2 <- 'If I want to include a "quote" inside a string, I use single quotes'
 string3 <- "\""
 string4 <- "\'" # if we want to include a single or double quote in our string we use the backslash (\) to escape the character
-TASK: include a backslash in a string.
+# TASK: include a backslash in a string.
 
 x <- c("\"", "\\")
 x
@@ -535,7 +519,7 @@ str_to_title(uc)
 
 # String matching
 
-str_detect(y, "[aeiou]") # tells you if there’s any match to the pattern
+str_detect(y, "[aeiou]") # tells you if there?s any match to the pattern
 str_count(y, "[aeiou]") # counts how many vowels are in each string
 str_locate(y, "[aeiou]") # gives the position of the first match
 str_extract(y, "[aeiou]") # extracts the text of the first match
@@ -643,9 +627,11 @@ summary(ses_2)
 droplevels(ses_2)
 
 
-# 1.4 Saving Files #
+# 1.4 Saving R Files #
 
-# I need to figure this out in the context of creating R project files.
+# This is quite simple in R: simply press Ctrl + S or select File > Save from the menu.
+
+# We only need to save R scripts, as the .RProj file does not need updating.
 
 
 # 1.5 Getting Help #
@@ -696,9 +682,12 @@ apropos("sum") # returns all objects in the global environment that contain the 
 # 1.8 Debugging #
 
 # This is the computer science term for dealing with code issues. R likes to tell you when something is not quite right,
-and not always in an intelligble manner. As progress with this workshop, you are likely to encounter the following results:
+# and not always in an intelligble manner. As progress with this workshop, you are likely to encounter the following results:
+
 #	- message: R is communicating a diagnostic message relating to your code; your commands still execute.
+
 #	- warning: R is highlighting an error/issue with your code, your commands still execute but the warnings need addressing.
+
 #	- error: R is telling you there has been a fatal error with your code; your commands do not execute.
 
 # Let's look at a simple example:
@@ -713,7 +702,8 @@ warning() # displays the warnings associated with the most recently executed blo
 #	- What did you get?
 #	- How does what you get differ from what you were expecting?
 #	- Were your expectations correct in the first place?
-#	- Can you reproduce the problem (exactly)?
+#	- Can you reproduce the problem (exactly)?
+
 
 
 # 1.9 Environment Objects #
@@ -736,6 +726,7 @@ help(options)
 options() # wide range of options for displaying results etc
 options(digits=3) # change a specific option (i.e. number of digits to print on output)
 options(max.print = 9999) # set maxmimum number of rows to print to the console as 9999
+options(scipen = 999) # surpress display of scientific notation
 
 
 # 1.11 Predictive Analytics Examples #
@@ -757,7 +748,6 @@ str(auto) # examine the structure of the data set
 attributes(auto) # list the attributes (i.e. metadata) of the data set
 ncol(auto) # number of columns
 nrow(auto) # number of rows
-order(auto$make) # sort the data set by ascending order of car make (returns row number)
 
 # Univariate analysis
 
@@ -787,7 +777,7 @@ aggregate(price ~ foreign + rep78, data = auto, mean) # table of means i.e. aver
 
 auto %>% 
   group_by(foreign, rep78) %>% 
-  summarise(mean = mean(price), sd = sd(price)) # same way of producing results of aggregate() function
+  summarise(mean = mean(price), sd = sd(price)) # same way of producing the results of the aggregate() function
 
 # Hypothesis testing
 
@@ -825,7 +815,7 @@ cor.test(auto$price, auto$weight) # statistical significance test of Pearson r c
 # The rest of the activities will employ real, messy data from a variety of open data sources.
 
 
-# 2.1 Importing and Exploring Data
+# 2.1 Importing and Exploring Data #
 
 aqmen_data <- read_dta("./data_raw/adrc_s_training_data4.dta") # load in the training data using the read_dta() function
 
@@ -839,10 +829,9 @@ str(aqmen_data) # examine the structure of the data set
 attributes(aqmen_data) # list the attributes (i.e. metadata) of the data set
 ncol(aqmen_data) # number of columns
 nrow(aqmen_data) # number of rows
-order(aqmen_data$id) # sort the data set by ascending order of unique id
 
 
-# 2.2 Univariate Analysis
+# 2.2 Univariate Analysis #
 
 # 2.2.1 Metric (numeric) variables
 
@@ -874,7 +863,7 @@ prop.table(ftab_sex) # display a table of proportions instead of frequencies
 # TASK: produce a frequency table and bar chart of respondent level of education (educ).
 
 
-# 2.3 Bivariate Analysis
+# 2.3 Bivariate Analysis #
 
 # 2.3.1 Metric (numeric) variables
 
@@ -913,6 +902,29 @@ cor(hrdata$sick, hrdata$sales, use = "complete.obs") # Pearson's r correlation c
 ###
 
 
+# 2.5 Exploratory Data Analysis
+
+# It is good practice to quickly and systematically explore your data in order to identify analytical possibilities.
+
+# This process is commonly known as Exploratory Data Analysis (EDA) and involves transforming (summarsing existing
+# variables, creating new ones, filtering observations etc), visualising (producing plots) and modelling (building simple statistical 
+# models) your data. 
+
+# Grolemund and Wickham (2017) describe EDA as follows:
+#	1. Generate questions about your data.
+#	2. Search for answers by visualising, transforming, and modelling your data.
+#	3. Use what you learn to refine your questions and/or generate new questions.
+
+# EDA is NOT a substitute for employing an appropriate research design (i.e. you are not 'fishing' for research questions or statistical significance).
+
+# Some tips of what to look for when performing EDA:
+#	- how are the values of your variables distributed? 
+#	- which values are most common? Which are most rare? Are there clusters in your data?
+#	- are there gaps in the values of a variable?
+#	- how do the values of two variables covary?
+#	- what process could generate patterns between two variables? Random chance?
+#	- how strong is the association between two variables? In what direction does it point? Does the pattern hold when you look at subpopulations?
+
 
 ### END OF ACTIVITY TWO [ACT002] ###
 
@@ -924,7 +936,7 @@ cor(hrdata$sick, hrdata$sales, use = "complete.obs") # Pearson's r correlation c
 
 
 
-# 3. Statistical Models #
+# 3. Statistical Models I and II [ACT003] #
 
 # This section demonstrates how to construct, interpret and diagnose three common types of statistical models:
 #	- linear (for metric outcomes)
@@ -1051,6 +1063,7 @@ scot_char_analysis$linc <- log2(scot_char_analysis$inc)
 summary(scot_char_analysis$linc)
 ggplot(data = scot_char_analysis) + geom_histogram(mapping = aes(linc)) # histogram of log income
 
+
 # Estimate a multivariate linear regression #
 
 # We'll specify the following model: estimate income as a function of a charity's legal form (categorical), 
@@ -1095,13 +1108,13 @@ p + geom_pointrange() + coord_flip()
 reg_obs <- augment(mod1, data = scot_char_analysis) # augment collects observation-level model results (e.g. predicted outcomes)
 View(reg_obs)
 # augment() returns the following additional variables (Healy, 2019):
-# .fitted — The fitted values of the model
-# .se.fit — The standard errors of the fitted values
-# .resid — The residuals
-# .hat — The diagonal of the hat matrix
-# .sigma — An estimate of residual standard deviation when the corresponding observation is dropped from the model
-# .cooksd — Cook’s distance, a common regression diagnostic
-# .std.resid — The standardized residuals
+# .fitted ? The fitted values of the model
+# .se.fit ? The standard errors of the fitted values
+# .resid ? The residuals
+# .hat ? The diagonal of the hat matrix
+# .sigma ? An estimate of residual standard deviation when the corresponding observation is dropped from the model
+# .cooksd ? Cook?s distance, a common regression diagnostic
+# .std.resid ? The standardized residuals
 
 p <- ggplot(data = reg_obs,
             mapping = aes(x = .fitted, y = linc)) # plot predicted vs observed values for log of income
@@ -1111,7 +1124,7 @@ p + geom_point()
 
 # Regression diagnostics #
 
-# We should perform a couple of checks of some of assumptions underpinng regression:
+# We should perform some checks of some of assumptions underpinning the regression model:
 p <- ggplot(data = reg_obs,
             mapping = aes(x = .resid)) # check for normality
 x11()
@@ -1250,13 +1263,13 @@ p + geom_pointrange() +
 mod2_obs <- augment(mod2, data = char_inv) # augment collects observation-level model results (e.g. predicted outcomes)
 View(mod2_obs)
 # augment() returns the following additional variables (Healy, 2019):
-# .fitted — The fitted values of the model
-# .se.fit — The standard errors of the fitted values
-# .resid — The residuals
-# .hat — The diagonal of the hat matrix
-# .sigma — An estimate of residual standard deviation when the corresponding observation is dropped from the model
-# .cooksd — Cook’s distance, a common regression diagnostic
-# .std.resid — The standardized residuals
+# .fitted ? The fitted values of the model
+# .se.fit ? The standard errors of the fitted values
+# .resid ? The residuals
+# .hat ? The diagonal of the hat matrix
+# .sigma ? An estimate of residual standard deviation when the corresponding observation is dropped from the model
+# .cooksd ? Cook?s distance, a common regression diagnostic
+# .std.resid ? The standardized residuals
 
 p <- ggplot(data = reg_obs,
             mapping = aes(x = .fitted, y = linc)) # plot predicted vs observed values for log of income
@@ -1350,12 +1363,48 @@ nrow(lbtt) # 460 observations remaining in the data set
 
 summary(mod3 <- glm(num_transactions ~ tran_type + prop_type + prop_band + year, family="poisson", data=lbtt))
 # TASK: 
+### FINISHED HERE!
 
 
 
 ### END OF ACTIVITY THREE [ACT003] ###
 
 
+##############################################
+
+
+##############################################
+
+
+# AND NOW FOR SOMETHING COMPLETELY DIFFERENT
+
+# Making a near-perfect Yorkshire Pudding - a la Vernon Gayle #
+
+# 3 eggs
+# 115g plain flour
+# 285ml milk
+# 12 tablespoons vegetable oil / I prefer beef dripping
+
+# 1. Whisk the eggs, flour, salt, and milk together really well in a bowl 
+to make your batter. 
+
+# 2. Pour the batter into a jug, and let it sit for 30 minutes before you use it. 
+
+# 3. Turn your oven up to the highest setting and place the baking tray in the 
+oven to heat up for 5 minutes. 
+
+# 4. Place 1 table spoon of oil in each indentation, 
+and put the tray back into the oven and heat until oil is very hot.
+ 
+# 5. Open oven door, slide the tray out, and carefully pour the batter in. 
+
+# 6. Close the door and cook for 15 minutes without opening the oven door. 
+
+# Serve immediately with roast beef (or similar) veg and gravy.
+
+
+### END OF DAY ONE ###
+
 
 ##############################################
 
@@ -1363,26 +1412,316 @@ summary(mod3 <- glm(num_transactions ~ tran_type + prop_type + prop_band + year,
 ##############################################
 
 
-library(survminer) # load in graphing package for survival plots
-library(survival) # load in survival analysis package
-library(lubridate) # load in data wrangling package for dates
-library(tidyverse) # load in data wrangling package
-library(broom)
-library(aod)
+### BEGINNING OF DAY TWO ###
+
+
+# REMINDER: this is a new R session and you need to reload (but not reinstall) the packages you need
+# for the upcoming activities. E.g. library(tidyverse)
+
+
+# 4. Longitudinal Data Analysis [ACT004] #
+
+# In this section we estimate predictive models for panel (repeated contacts) data.
+
+# Panel data contain multiple observations per unit e.g. an individual's test results
+# from each year of university, a debit card's record of transactions per day.
+
+# Panel data can be modelled as if they were cross-sectional i.e. using the standard 
+# linear regression model that we learned in Activity Two [ACT002]. However, this approach
+# is often unsuitable as it ignores the fact that observations within a unit are not 
+# independent e.g. pupils within a school are more likely to be similar to each other than
+# they are to pupils from other schools, on average.
+
+
+# RQ: what factors predict a charity's income?
+# Data: England and Wales charity data, which is an open data set provided by the regulator for England and Wales (CCEW)
+# Why is it of interest?: long-standing policy concern about big charities and their dominance of the sector (see Backus & Clifford, 2013)
+
+
+# 4.1 Exploring panel data
+
+# Let's load in some longitudinal data on charity income - this data set contains multiple
+# financial records per charity (2007-2017).
+
+char_fin <- read_csv("./data_raw/charity_finances_lda.csv") # read in the data
+
+View(char_fin) # view the data set
+nrow(char_fin) # display the number of observations (rows)
+ncol(char_fin) # display the number of variables (columns)
+
+char_fin_subset <- char_fin %>% 
+  filter(regno==200002 | regno==205914 | regno==200050 | regno==278892 | regno==295247) # keep a subset of charities for exploratory purposes
+
+# Quick look at income over time for these charities:
+
+p <- ggplot(data = char_fin_subset, mapping = aes(x = year, y = income, colour = as.factor(regno)))
+
+x11()
+p + geom_line(aes(group=regno))
+
+# Fit a linear regression line to the distribution of income over time:
+
+p <- ggplot(data = char_fin_subset, mapping = aes(x = year, y = income))
+
+x11()
+p + geom_point() + geom_smooth(method = "lm") # fit one regression line
+
+p <- ggplot(data = char_fin_subset, mapping = aes(x = year, y = income, group = as.factor(regno)))
+
+x11()
+p + geom_point() + geom_smooth(method = "lm") # fit separate regression lines per charity
+
+
+# 4.2 Pooled cross-sectional model
+
+# Let's ignore the longitudinal structure of the data set and estimate a standard
+# linear regression model:
+
+# Get the variables in shape for inclusion in the model
+
+char_fin$aoo <- as.factor(char_fin$aoo)
+levels(char_fin$aoo) # 1 = Local, 2 = Regional, 3 = National
+table(char_fin$aoo)
+
+ols <- plm(linc ~ age + comp + aoo, data = char_fin_pd, model= "pooling") # regress income (log) on age, company status and area of operation
+summary(ols)
+
+# TASK: interpret the results of the regression model.
+# QUESTION: why might a pooled regression be unsuitable for panel data?
+
+# Let's store the results of the model for comparison with other approaches later:
+
+ols_res <- tidy(ols, conf.int = TRUE) # use `broom`'s tidy() function to extract model coefficient information
+ols_res # now we have a summary table of regression coefficients from our model
+
+ols_fit <- glance(ols) # use `broom`'s glance() function to extract model fit information
+ols_fit # now we have a summary table of regression fit statistics from our model
+
+
+# 4.3 Fixed effects model
+
+# The pooled cross-sectional model gives us some insight into the relationship between the predictors and the outcome.
+# However, it does not allow us to examine variation within units e.g. how has income fluctuated over time for charities?
+
+# To examine and estimate within-unit variation, we need a fixed effects model.
+
+
+# 4.3.1 Set data as panel data
+
+char_fin_pd <- plm.data(char_fin, index=c("regno","year")) # tell R that an observation is uniquely identified by a combination
+# of charity number and financial year
+
+table(char_fin_pd$numobs) # number of observations per charity
+hist(char_fin_pd$numobs)
+
+# QUESTION: what is the modal number of observations per charity?
+
+mean(char_fin_pd$linc) # mean income (log)
+mean(char_fin_pd$income) # mean income
+
+# QUESTION: why do we transform income using the natural log?
+
+
+# 4.3.2 Estimate the model
+
+fe <- plm(linc ~ age + comp + aoo, data = char_fin_pd, model= "within")
+summary(fe)
+
+# QUESTION: why does the model only include one predictor, even though we specified three in the formula?
+
+# Let's interpret the effect of age on income: for a given charity, as age increases by one unit (i.e. year),
+# log income increases by 0.000733 units.
+
+# We can express the effect of age in terms of the original variable (i.e. actual income, not log transformed):
+
+exp(0.000733) - 1 # calculate % decrease in income for a one-unit change in age
+
+# QUESTION: do you think age has a meaningful effect on charity income?
+
+# TIP: fixed effects models do not work well when there is minimal within-unit variation; in our example,
+# age only changes by one year per observation and this may be too small a change to influence the outcome.
+
+# Store the results of the model for comparison with other approaches later:
+
+fe_res <- tidy(fe, conf.int = TRUE) # use `broom`'s tidy() function to extract model coefficient information
+fe_res # now we have a summary table of regression coefficients from our model
+
+fe_fit <- glance(fe) # use `broom`'s glance() function to extract model fit information
+fe_fit # now we have a summary table of regression fit statistics from our model
+
+# Remember how we said that fitting a fixed effects model is like including n-1 dummy (indicator) variables
+# for the units in the data set? We can access these fixed effects as follows:
+
+summary(fixef(fe, type="dmean"))
+
+
+# 4.4 Between effects model
+
+# The fixed model examined within-unit variation but at the expense of between-unit variaton.
+
+# For example, because company status does not vary within charities (i.e. if you are established as a company
+# you tend to remain as one), it is not included in the model.
+# For our research question this is sub-optimal: we are very much interested in the effect of company status on
+# the outcome.
+
+# To examine between-unit variation only, we need a between effects model.
+
+# 4.4.1 Estimate the model
+
+be <- plm(linc ~ age + comp + aoo, data = char_fin_pd, model= "between")
+summary(be)
+
+# Let's store the results of the model for comparison with other approaches later:
+
+be_res <- tidy(be, conf.int = TRUE) # use `broom`'s tidy() function to extract model coefficient information
+be_res # now we have a summary table of regression coefficients from our model
+
+be_fit <- glance(be) # use `broom`'s glance() function to extract model fit information
+be_fit # now we have a summary table of regression fit statistics from our model
+
+
+# 4.5 Random effects model
+
+# Each of the preceding models have told us something about the variation in the outcome.
+
+# Another approach we can take is called a random effects model: this combines the approaches of the
+# fixed and between effects model i.e. it tells us something about both within and between-unit variation.
+
+# 4.5.1 Estimate the model
+
+re <- plm(linc ~ age + comp + aoo, data = char_fin_pd, model= "random")
+summary(re)
+
+# The interpretation of the coefficients is slightly trickier: a one-unit change in age
+# results, on average, in a decrease in income across time and between charities.
+
+# Let's store the results of the model for comparison with other approaches later:
+
+re_res <- tidy(re, conf.int = TRUE) # use `broom`'s tidy() function to extract model coefficient information
+re_res # now we have a summary table of regression coefficients from our model
+
+re_fit <- glance(re) # use `broom`'s glance() function to extract model fit information
+re_fit # now we have a summary table of regression fit statistics from our model
+
+
+# 4.6 Model comparison
+
+# Which model best captures the variation in the outcome, or the essential relationships between
+# the predictors and the outcome?
+
+# There is no simple answer and it very much depends on your research question. However, there are
+# some statistical tests that can point us in the right direction.
+
+
+# 4.6.1 Random vs Fixed
+
+# The Hausman test is hypothesis test of whether the fixed or random effects model is a better fit for the data.
+
+# H0: random effects is preferred
+# HA: fixed effects is preferred
+
+phtest(fe, re)
+
+# The Hausman test is statistically significant (p-value < .05), indicating we should select fixed over
+# random effects.
+
+
+# 4.6.2 Random vs Pooled
+
+# The Breusch-Pagan Lagrange multiplier (LM) helps you decide between a
+# random effects regression and a simple OLS regression. 
+
+# H0: regular ols is preferred
+# HA: random effects is preferred
+
+plmtest(ols, type = "bp")
+
+# The LM test is statistically significant (p-value < .05), indicating we should select random effects 
+# over a pooled model i.e. the panel component is relevant to the analysis. In our example,
+# the unobserved differences between charities should be accounted for when predicting income.
+
+
+# 4.6.3 Testing for heteroskedasticity
+
+# We need to check if the variance of the error term (i.e. the difference between predicted and actual outcome)
+# is constant (homoskedastistic).
+
+# Basically, there should be no correlation between our model's error and the predictors in the model.
+
+# I.e., when the model is 'wrong' (difference between predicted and actual), it should be wrong to roughly
+# the same degree across the values of our predictors. For example, our model should not get worse at
+# predicting income for very old charities.
+
+# H0: errors are homoskedastistic
+# HA: errors are heteroskedastic
+
+library(lmtest)
+bptest(re)
+
+# In this instance we reject the null hypothesis and acknowledge that our random effects model suffers
+# from the presence of heteroskedasticity.
+
+# This is an intermediate/advanced topic and we refer you to the excellent advice contained here:
+# [https://www.princeton.edu/~otorres/Panel101R.pdf]
+
+
+# 4.6.4 Model fit statistics
+
+# We can compare how well our various models account for the variation in outcome by referring to
+# the model summary statistics we saved earlier:
+
+ols_fit
+re_fit
+fe_fit
+
+# The R-squared statistic is highest for the random effects model.
+
+
+# 4.6.5 Model coefficients
+
+ols
+be
+fe
+re
+
+# Note the estimates of the coefficients (i.e. the effects of the predictors on the outcome) change
+# across the different models.
+
+
+# EXERCISE:
+# - include the variable "year" as a categorical predictor in the fixed and random effects models.
+# - graph predicted values for income using the results of the random effects model; HINT:
+#   use the augment() function to capture observation-level model statistics.
+# - restrict the analysis to charities that are present in every year in the data set.
+
+
+### END OF ACTIVITY FOUR [ACT004] ###
+
+
+
+##############################################
+
+
+##############################################
+
+
 
 # 5. Duration Analysis
 
-# 5.1 A quick and dirty duration analysis
+# In this section we examine instances where the outcome is a duration.
+
+# We estimate a number of different models appropriate for duration data, and
+# focus on interpreting the results sensibly and insightfully.
 
 
-# 5.2 Charity Survival
+# 5.1 Charity Survival
 
 # RQ: how long do charities survive? What factors predict organisational demise?
 # Data: Linked administrative data on English charities, which is an open data set provided by the Charity Commission [http://data.charitycommission.gov.uk/]
 # Why is it of interest?: the impact of the Great Recession on charity sustainability is not well understood (Clifford, 2017)
 
 
-# 5.2.1 Data Wrangling
+# 5.1.1 Data Wrangling
 
 # Import data
 
@@ -1462,7 +1801,7 @@ table(char_surv$subsid) # dummy variable
 table(char_surv$aoo) # the reference category is "Local"
 
 
-# 5.2.2 Duration Model
+# 5.1.2 Duration Model
 
 # Let's estimate a simple linear regression model of the length of survival
 
@@ -1478,7 +1817,7 @@ summary(mod1)
 # Our data are much better modelled using a survival analysis approach.
 
 
-# 5.2.3 Survival Analysis
+# 5.2 Survival Analysis
 
 # Create the variables necessary for the model
 
@@ -1495,6 +1834,7 @@ hist(char_surv$los) # currently this is only calculated for charities that have 
 
 char_surv <- char_surv %>% 
   mutate(st = ifelse(is.na(remy), 2019 - regy, remy - regy))
+
 # There's a lot to unpack with the code above:
 # 1. We create a new variable called "st" based on a conditional.
 # 2. The condition is the first argument (i.e. for observations with missing data for "remy").
@@ -1682,4 +2022,28 @@ plot(cox_curve)
 
 
 
-# 6. [ACT006] #
+
+# Final Thoughts #
+
+# Congratulations on progressing through the workshop. Our aim was to equip you, as rapidly and painlessly as possible,
+# with a proficiency in predictive analytics using R .
+
+# While you have covered a great deal of material and skills, there is a bigger and badder world of R programming and wrangling out there.
+
+# Take a look at some of the suggested resources on workshop Github repository [https://github.com/DiarmuidM/aqmen-data-wrangling-in-R/tree/master/resources].
+
+# Hopefully this workshop has gone some way to convincing you of the value of adopting
+# social science approaches and tools for data science work; if not then let us know how we can improve;
+# if so then please engage with us on further topics and tools e.g. Social Network Analysis, Reproducible Data Analytics.
+
+# Good luck with future data wrangling and analytics work.
+
+
+# "Big wheels rolling through fields
+# Where sunlight streams
+# Meet me in a land of hope and dreams"
+
+# - Bruce Springsteen, Land of Hope and Dreams (2012)
+
+
+########################################### FIN ##################################################
