@@ -1479,6 +1479,11 @@ fe_res # now we have a summary table of regression coefficients from our model
 fe_fit <- glance(fe) # use `broom`'s glance() function to extract model fit information
 fe_fit # now we have a summary table of regression fit statistics from our model
 
+# Remember how we said that fitting a fixed effects model is like including n-1 dummy (indicator) variables
+# for the units in the data set? We can access these fixed effects as follows:
+
+summary(fixef(fe, type="dmean"))
+
 
 # 4.4 Between effects model
 
