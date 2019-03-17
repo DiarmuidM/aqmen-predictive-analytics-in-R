@@ -25,4 +25,4 @@ _Your mission, should you choose to accept it..._
 1. Download the [data set](https://data.cdrc.ac.uk/dataset/simd2016) from the CDRC website and load it into RStudio. There may be some data cleaning to perform at this stage, so make sure to open the raw data before loading it into RStudio.
 2. Produce a linear regression model of deprivation rank (```SIMD_2016_Percentile```) that contains the following predictors (```Working_age_population_Revised, Council_area, Income_rate, and NEET```).
 3. Interpret the results and make a statement about the effect of each of the predictors on the outcome.
-4. Using the same predictors, create a binary outcome variable indicating whether an area is in the lowest deprivation decile and estimate a logistic regression.
+4. Create a binary outcome variable indicating whether an area is in the lowest deprivation decile and estimate a logistic regression using the same predictors.
