@@ -73,9 +73,8 @@
 
 #	5. Analysing Durations: how to analyse outcomes where the unit of observation is time or a duration [ACT005]
 
-#	6. Modelling Trends: an introduction to time-series analysis [ACT006]
+#	6. Hackathon: two blocks of time where participants will tackle a data analysis challenge using administrative data [ACT007] [ACT006]
 
-#	7. Hackathon: two blocks of time where participants will tackle a data analysis challenge using administrative data [ACT007]
 
 # If you want to jump to a section: press Ctrl + F and search for the activity code e.g. [ACT001].
 
