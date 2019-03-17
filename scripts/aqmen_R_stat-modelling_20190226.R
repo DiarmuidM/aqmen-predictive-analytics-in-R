@@ -1378,6 +1378,28 @@ View(char_fin) # view the data set
 nrow(char_fin) # display the number of observations (rows)
 ncol(char_fin) # display the number of variables (columns)
 
+char_fin_subset <- char_fin %>% 
+  filter(regno==200002 | regno==205914 | regno==200050 | regno==278892 | regno==295247) # keep a subset of charities for exploratory purposes
+
+# Quick look at income over time for these charities:
+
+p <- ggplot(data = char_fin_subset, mapping = aes(x = year, y = income, colour = as.factor(regno)))
+
+x11()
+p + geom_line(aes(group=regno))
+
+# Fit a linear regression line to the distribution of income over time:
+
+p <- ggplot(data = char_fin_subset, mapping = aes(x = year, y = income))
+
+x11()
+p + geom_point() + geom_smooth(method = "lm") # fit one regression line
+
+p <- ggplot(data = char_fin_subset, mapping = aes(x = year, y = income, group = as.factor(regno)))
+
+x11()
+p + geom_point() + geom_smooth(method = "lm") # fit separate regression lines per charity
+
 
 # 4.2 Pooled cross-sectional model
 
@@ -1390,7 +1412,7 @@ char_fin$aoo <- as.factor(char_fin$aoo)
 levels(char_fin$aoo) # 1 = Local, 2 = Regional, 3 = National
 table(char_fin$aoo)
 
-ols <-lm(linc ~ age + comp + aoo, data = char_fin) # regress income (log) on age, company status and area of operation
+ols <- plm(linc ~ age + comp + aoo, data = char_fin_pd, model= "pooling") # regress income (log) on age, company status and area of operation
 summary(ols)
 
 # TASK: interpret the results of the regression model.
@@ -1436,7 +1458,20 @@ summary(fe)
 
 # QUESTION: why does the model only include one predictor, even though we specified three in the formula?
 
-# Let's store the results of the model for comparison with other approaches later:
+# Let's interpret the effect of age on income: for a given charity, as age increases by one unit (i.e. year),
+# log income increases by 0.000733 units.
+
+# We can express the effect of age in terms of the original variable (i.e. actual income, not log transformed):
+
+exp(0.000733) - 1 # calculate % decrease in income for a one-unit change in age
+
+# QUESTION: do you think age has a meaningful effect on charity income?
+
+# TIP: fixed effects models do not work well when there is minimal within-unit variation; in our example,
+# age only changes by one year and this may be too small a change to influence the outcome.
+
+
+# Store the results of the model for comparison with other approaches later:
 
 fe_res <- tidy(fe, conf.int = TRUE) # use `broom`'s tidy() function to extract model coefficient information
 fe_res # now we have a summary table of regression coefficients from our model
@@ -1454,14 +1489,12 @@ fe_fit # now we have a summary table of regression fit statistics from our model
 # For our research question this is sub-optimal: we are very much interested in the effect of company status on
 # the outcome.
 
-# To examine between-unit variation, we need a between effects model.
+# To examine between-unit variation only, we need a between effects model.
 
 # 4.4.1 Estimate the model
 
 be <- plm(linc ~ age + comp + aoo, data = char_fin_pd, model= "between")
 summary(be)
-
-# QUESTION: why does the model only include one predictor, even though we specified three in the formula?
 
 # Let's store the results of the model for comparison with other approaches later:
 
@@ -1484,7 +1517,8 @@ be_fit # now we have a summary table of regression fit statistics from our model
 re <- plm(linc ~ age + comp + aoo, data = char_fin_pd, model= "random")
 summary(re)
 
-# QUESTION: why does the model only include one predictor, even though we specified three in the formula?
+# The interpretation of the coefficients is slightly trickier: a one-unit change in age
+# results, on average, in a decrease in income across time and between charities.
 
 # Let's store the results of the model for comparison with other approaches later:
 
@@ -1494,10 +1528,85 @@ re_res # now we have a summary table of regression coefficients from our model
 re_fit <- glance(re) # use `broom`'s glance() function to extract model fit information
 re_fit # now we have a summary table of regression fit statistics from our model
 
-# Random effects estimator
-random <- plm(ln_wage ~ age + hours, data=pdata, model= "within")
-summary(random)
 
+# 4.6 Model comparison
+
+# Which model best captures the variation in the outcome, or the essential relationships between
+# the predictors and the outcome?
+
+# There is no simple answer and it very much depends on your research question. However, there are
+# some statistical tests that can point us in the right direction.
+
+
+# 4.6.1 Random vs Fixed
+
+# The Hausman test is hypothesis test of whether the fixed or random effects model is a better fit for the data.
+
+# H0: random effects is preferred
+# HA: fixed effects is preferred
+
+phtest(fe, re)
+
+# The Hausman test is statistically significant (p-value < .05), indicating we should select fixed over
+# random effects.
+
+
+# 4.6.2 Random vs Pooled
+
+# The Breusch-Pagan Lagrange multiplier (LM) helps you decide between a
+# random effects regression and a simple OLS regression. 
+
+# H0: regular ols is preferred
+# HA: random effects is preferred
+
+plmtest(ols, type = "bp")
+
+# The LM test is statistically significant (p-value < .05), indicating we should select random effects 
+# over a pooled model i.e. the panel component is relevant to the analysis. In our example,
+# the unobserved differences between charities should be accounted for when predicting income.
+
+
+# 4.6.3 Testing for heteroskedasticity
+
+# We need to check if the variance of the error term (i.e. the difference between predicted and actual outcome)
+# is constant (homoskedastistic).
+
+# Basically, there should be no correlation between our model's error and the predictors in the model.
+
+# I.e., when the model is 'wrong' (difference between predicted and actual), it should be wrong to roughly
+# the same degree across the values of our predictors. For example, our model should not get worse at
+# predicting income for very old charities.
+
+# H0: errors are homoskedastistic
+# HA: errors are heteroskedastic
+
+library(lmtest)
+bptest(re)
+
+# In this instance we reject the null hypothesis and acknowledge that our random effects model suffers
+# from the presence of heteroskedasticity.
+
+# This is an intermediate/advanced topic and we refer you to the excellent advice contained here:
+# [https://www.princeton.edu/~otorres/Panel101R.pdf]
+
+
+# 4.6.4 Model fit statistics
+
+# We can compare how well our various models account for the variation in outcome by referring to
+# the model summary statistics we saved earlier:
+
+ols_fit
+re_fit
+fe_fit
+
+# The R-squared statistic is highest for the random effects model.
+
+
+# EXERCISE:
+# - include the variable "year" as a predictor in the fixed and random effects models.
+# - graph predicted values for income using the results of the random effects model; HINT:
+#   use the augment() function to capture observation-level model statistics.
+# - restrict the analysis to charities that are present in every year in the data set.
 
 
 ### END OF ACTIVITY FOUR [ACT004] ###
