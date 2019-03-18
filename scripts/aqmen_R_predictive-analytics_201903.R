@@ -207,7 +207,7 @@ library(plm) # package for panel data regression models
 ?plm # view help documentation for this package
 
 # NB!
-# Here is the most important point regarding installing an loading packages:
+# Here is the most important point regarding installing and loading packages:
 
 # 1. You only need to install a package ONCE on your machine.
 # 2. You need to load it EVERY time you launch RStudio.
@@ -215,9 +215,8 @@ library(plm) # package for panel data regression models
 # If you repeatedly install packages then R gets a bit confused as to where the packages should be located.
 
 
-
 # A final note about packages: you'll see mention of performing functions or tasks using base R. This means drawing on the functions that come
-# as standard with your version of R. install.packages() and write.csv() are examples of base R functions.
+# as standard with your version of R. install.packages() and mean() are examples of base R functions.
 
 # For the purposes of data analysis (and most other data related tasks, frankly), we will not use base R functions; the reasons will become clear
 # as we progress but it is worth noting that there is more than one way to skin a cat.
@@ -722,7 +721,6 @@ warning() # displays the warnings associated with the most recently executed blo
 #	- Can you reproduce the problem (exactly)?
 
 
-
 # 1.9 Environment Objects #
 
 # We can remove some of the objects we've created (i.e. delete variables):
@@ -766,6 +764,7 @@ attributes(auto) # list the attributes (i.e. metadata) of the data set
 ncol(auto) # number of columns
 nrow(auto) # number of rows
 
+
 # Univariate analysis
 
 hist(auto$price) # metric variable
@@ -773,6 +772,7 @@ summary(auto$price)
 
 ftable <- table(auto$foreign) # frequency table of categorical variable
 barplot(ftable)
+
 
 # Bivariate analysis
 
@@ -783,6 +783,7 @@ cor(auto$price, auto$weight) # Pearson correlation coefficient
 
 table(auto$foreign, auto$rep78) # crosstabulation of car status and repair record
 CrossTable(auto$foreign, auto$rep78, prop.c = TRUE, prop.r = FALSE, prop.t = FALSE, prop.chisq = FALSE) 
+
 
 # Multivariate analysis
 
@@ -820,8 +821,8 @@ cor.test(auto$price, auto$weight) # statistical significance test of Pearson r c
 
 # 2. Fundamental Statistical Concepts #
 
-# In this section you will learn how to conduct a range of univariate, bivariate and multivariate analyses, including
-# tests of hypotheses and statistical significance.
+# In this section you will learn how to conduct a range of univariate, bivariate and multivariate analyses, 
+# and perform some rudimentary hypothesis tests.
 
 # A note about the data used in this activity: 
 # - The files have been specially created by AQMEN for training and MUST not be used in 'real life'.
@@ -933,6 +934,8 @@ cor(hrdata$sick, hrdata$sales, use = "complete.obs") # Pearson's r correlation c
 table(aqmen_data$graduate, aqmen_data$sex) # crosstabulation of sex and graduate status
 CrossTable(aqmen_data$graduate, aqmen_data$sex, prop.c = TRUE, prop.r = FALSE, prop.t = FALSE, prop.chisq = FALSE) 
 
+# TASK: look at the help documentation for CrossTable() to see what other options can be specified.
+
 # There doesn't look to be much of an association between these variables: 8% of males are graduates compared
 # to 6.5% of females. Let's summarise this association using an appropriate correlation statistic:
 
@@ -946,8 +949,8 @@ CramerV(aqmen_data$graduate, aqmen_data$sex) # returns a correlation between 0 (
 CrossTable(aqmen_data$graduate, aqmen_data$sex, prop.c = TRUE, prop.r = FALSE, prop.t = FALSE, chisq = TRUE)
 
 # To summarise: there is a weak association between sex and graduate status, but there is reason to think
-# this correlation exists in the population from which the sample was drawn (i.e. the finding 'generalises').
-
+# this correlation exists in the population from which the sample was drawn (i.e. the finding generalises
+# from the sample to the population).
 
 # TASK: explore the association between graduate status and the number of children a person has. We'll start
 # you off by dealing with missing values:
@@ -958,7 +961,9 @@ table(aqmen_data$children_r) # use this variable for the task
 
 # 2.3.3 Categorical and metric variables
 
-# Does workhours vary across sex?
+# If we one metric and one categorical variable, we can describe their association using a table of means.
+
+# Q. Does workhours vary across sex?
 
 aqmen_data %>% 
   group_by(sex) %>% 
@@ -974,16 +979,63 @@ aqmen_data %>%
   group_by(sex) %>% 
   summarise(mean = mean(workhours, na.rm = TRUE), 
             sd = sd(workhours, na.rm = TRUE), 
-            median = median(workhours, na.rm = TRUE)) 
+            median = median(workhours, na.rm = TRUE)) # tell each function (e.g. mean()) to ignore missing values
 
-# It looks like average hours worked per week varies by whether you are male or female. Let's see if we can
+# It looks like average hours worked per week varies by whether you are male or female. Let's see if we can formally
+# test whether this is the case:
 
 # H0: average workhours does not vary by sex
 # HA: average workhours varies by sex
 
 t.test(workhours ~ sex, data = aqmen_data) # two-sample independent test of means
 
-# 2.5 Exploratory Data Analysis
+# QUESTION: is there a statistically significant difference in average workhours by sex?
+
+
+# 2.4. Multivariate Analysis #
+
+# 2.4.1 Three or more categorical variables
+
+aqmen_data$married <- aqmen_data$marstat==1 # create a dummy variable indicating married status
+aqmen_data$married <- factor(aqmen_data$married, labels = c("Unmarried", "Married")) # label the values of this variable
+table(aqmen_data$married)
+
+aqmen_data$sex <- factor(aqmen_data$sex, labels = c("Male", "Female")) # set the sex variable as categorical
+
+aqmen_data$graduate <- factor(aqmen_data$graduate, labels = c("Not a graduate", "Graduate")) # set the graduate variable as categorical
+
+gsm_tab <- ftable(aqmen_data$graduate, aqmen_data$sex, aqmen_data$married) # three-way table
+gsm_tab
+
+# How to interpret: by graduate status, what is the association between sex and married status?
+
+# TASK: re-arrange the order of the variables and interpret the findings.
+
+ftable(prop.table(gsm_tab)) # display proportions instead of frequencies
+# ~27% of individuals in the sample are non-graduates, male and unmarried.
+
+
+# 2.4.2 Two or more categorical variables, one metric
+
+aqmen_data %>% 
+  group_by(sex, graduate) %>% 
+  summarise(mean = mean(workhours, na.rm = TRUE), 
+            sd = sd(workhours, na.rm = TRUE), 
+            median = median(workhours, na.rm = TRUE)) # tell each function (e.g. mean()) to ignore missing values
+
+# Note the order of the grouping: By sex, then graduate status
+
+# TASK: add a third categorical variable to the group_by() function.
+
+# You've probably noticed a snag as we add more variables:
+# - it is increasingly difficult to describe the associations and distributions (at least in a legible manner)
+# - we need to resort to more sophisticated analytical approaches in order to estimate and test the size and
+#   statistical significance of an association.
+
+# Thankfully, statistical models allow us to address the above issues.
+
+
+# 2.5 Exploratory Data Analysis #
 
 # It is good practice to quickly and systematically explore your data in order to identify analytical possibilities.
 
@@ -1025,12 +1077,6 @@ t.test(workhours ~ sex, data = aqmen_data) # two-sample independent test of mean
 #	- poisson (for count outcomes)
 
 
-# 3.0 Preliminaries #
-
-# Load in the libraries necessary for working with the data
-
-
-
 # 3.1 Linear Regression #
 
 # 3.1.1 A quick and dirty regression
@@ -1038,9 +1084,15 @@ t.test(workhours ~ sex, data = aqmen_data) # two-sample independent test of mean
 auto <- read_csv("./data_raw/auto.csv") # load in the (in)famous Stata "auto" data
 auto$dom <- as.factor(auto$foreign) == "Domestic"
 
+hist(auto$price) # take a quick look at the outcome variable
+
+p <- ggplot(data = auto, mapping = aes(x = mpg, y = price))
+p + geom_point() # quick look at association between outcome and one predictor
+
 reg_results <- lm(formula = price ~ mpg + dom + weight + length,
                   data = auto) # regress car price on miles per gallon, domestic make, weight and length
 summary(reg_results) # summarise the results of the regression
+
 # Doesn't look as neat as it does in other packages but we'll work on tidying up the formatting later. For now:
 #	1. Intercept: predicted value of price when all of the other variables take a value of zero (not substantively meaningful not an important component of the estimation)
 # 2. mpg: predicted increase in price for a one-unit increase in miles per gallon
@@ -1054,7 +1106,8 @@ summary(reg_results) # summarise the results of the regression
 # There are other model statistics output to the console that we haven't addressed above. Please ask one of the tutors if you are unsure of any of the
 # properties of the model. Let's crack on with a more subtantively interesting and consequential example.
 
-# 3.1.2 Charity income #
+
+# 3.1.2 Charity income
 
 # RQ: what factors predict a charity's income?
 # Data: Scottish Charity Register, which is an open data set provided by the regulator for Scotland (OSCR)
