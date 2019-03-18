@@ -129,7 +129,7 @@ getwd() # tells us the current working directory i.e. workspace
 # setwd("C:/Users/mcdonndz-local/Desktop/temp") # set the working directory to a specified directory; however we have no need to
 # do this as we have already set up a directory to store all of the components of our R project.
 
-folders = c('data_raw', 'data_clean', 'temp', 'logs') # create a list with folder names
+folders = c('data_raw', 'data_clean', 'scripts', 'temp', 'logs', 'figures') # create a list with folder names
 for(f in folders) {
   print(f)
   dir.create(f)
@@ -168,6 +168,13 @@ file.info("./data_raw/sampdata.csv") # displays some basic file information
 
 # A package only needs to be installed once, but you will need to load it in every time you launch an R session.
 
+.libPaths() # check which folder the packages are downloaded to
+
+# If you see two folders then you can tell R which one you would like to use:
+
+.libPaths("C:/Users/mcdonndz-local/Documents/R/win-library/3.5") # my personal machine's location
+# Now any packages will be downloaded to the above folder.
+
 my_packages <- c("tidyverse", "car", "haven", "broom", "ggplot2", "lubridate",
 	"aod", "ResourceSelection", "stringr", "descr", "DescTools", "plm", 
 	"magrittr", "survminer", "survival") # create a list of desired packages
@@ -176,10 +183,10 @@ install.packages(my_packages, repos = "http://cran.rstudio.com") # install packa
 
 installed.packages() # check which packages have been installed
 
-.libPaths() # check which folder the packages are downloaded to
-
 
 # 0.3 Loading Packages #
+
+# Once a package(s) has been installed, we need to load it in to RStudio as follows:
 
 library(tidyverse) # load in the "tidyverse" package of data wrangling functions
 library(car) # data wrangling package, particularly good for recoding categorical variables
@@ -198,6 +205,16 @@ library(survival) # load in survival analysis package
 
 library(plm) # package for panel data regression models
 ?plm # view help documentation for this package
+
+# NB!
+# Here is the most important point regarding installing an loading packages:
+
+# 1. You only need to install a package ONCE on your machine.
+# 2. You need to load it EVERY time you launch RStudio.
+
+# If you repeatedly install packages then R gets a bit confused as to where the packages should be located.
+
+
 
 # A final note about packages: you'll see mention of performing functions or tasks using base R. This means drawing on the functions that come
 # as standard with your version of R. install.packages() and write.csv() are examples of base R functions.
@@ -731,7 +748,7 @@ options(scipen = 999) # surpress display of scientific notation
 
 # 1.11 Predictive Analytics Examples #
 
-# Congratulations on getting through the technical (boring) bit of the activity. To whet your appetite, here are
+# Congratulations on getting through the technical bit of the activity. To whet your appetite, here are
 # some examples of the techniques you will learn over the course of the workshop.
 
 # Import data
@@ -810,9 +827,9 @@ cor.test(auto$price, auto$weight) # statistical significance test of Pearson r c
 # - The files have been specially created by AQMEN for training and MUST not be used in 'real life'.
 # - Do not make copies of these files or distribute them to others.
 
-# We're using these data sets as they are in good shape for analysis, saving us the trouble of getting our data into shape.
+# We're using these data sets as they are in good shape for analysis, saving us the trouble of performing detailed data wrangling.
 
-# The rest of the activities will employ real, messy data from a variety of open data sources.
+# The rest of the activities will employ real, messy open data sets from a variety of sources.
 
 
 # 2.1 Importing and Exploring Data #
@@ -852,13 +869,20 @@ hist(aqmen_data$workhours) # draw a histogram of workhours
 # 2.2.1 Categorical variables
 
 table(aqmen_data$sex) # frequency table of respondent sex; 1 = female, 2 = male
+freq(aqmen_data$sex) # better formatted version of the table() function
+
+# The above functions are a good example of why R is both so powerful and 'fiddly': you can perform the
+# same task using functions that come as standard with R (e.g. table) or from user-written packages (e.g. freq).
+
+# We suggest employing user-written functions as much as possible, for the simple reason that they have been
+# created with the aim of either improving existing functions, or filling a gap. We acknowledge that this does
+# introduce an administrative element to using R (i.e finding, installing and loading packages).
+
+
 ftab_sex <- table(aqmen_data$sex) # store the frequency table in an object to make plotting easier
 barplot(ftab_sex) # create a basic bar chart
 
 summary(as.factor(aqmen_data$sex)) # summary() function also works as long as we tell R that sex is a factor (categorical) variable
-
-prop.table(ftab_sex) # display a table of proportions instead of frequencies
-# TASK: replace 'ftab_sex' with 'aqmen_data$sex'; what happens?
 
 # TASK: produce a frequency table and bar chart of respondent level of education (educ).
 
@@ -882,6 +906,14 @@ cor(aqmen_data$age, aqmen_data$workhours, use = "complete.obs") # Pearson correl
 
 # QUESTION: is the correlation weak or strong?
 
+# Finally, let's fit a line of best fit to the scatterplot:
+
+x11() # open a display window for the graph
+p + geom_point() + geom_smooth(method = "lm") # reuse our p object and combine it with a scatterplot and regression line
+
+# The line of best fit is pretty much flat, which suggests little to no association between the two variables.
+
+
 # We can select a different correlation coefficient if we have ranking variables:
 hrdata <- read_csv("./data_raw/hrdata.csv")
 
@@ -896,10 +928,69 @@ cor(hrdata$sick, hrdata$sales, use = "complete.obs") # Pearson's r correlation c
 # QUESTION: are the two correlation estimates similar in this instance?
 
 
-###
-# FINISHED HERE [10/03/2019]
-#
-###
+# 2.3.2 Categorical variables
+
+table(aqmen_data$graduate, aqmen_data$sex) # crosstabulation of sex and graduate status
+CrossTable(aqmen_data$graduate, aqmen_data$sex, prop.c = TRUE, prop.r = FALSE, prop.t = FALSE, prop.chisq = FALSE) 
+
+# There doesn't look to be much of an association between these variables: 8% of males are graduates compared
+# to 6.5% of females. Let's summarise this association using an appropriate correlation statistic:
+
+CramerV(aqmen_data$graduate, aqmen_data$sex) # returns a correlation between 0 (no association) and 1 (perfect association)
+
+# QUESTION: is the correlation weak or strong?
+
+# Is this difference large enough to suggest a real association, one that exists outwith
+# our sample i.e. in the population from which the sample was drawn?
+
+CrossTable(aqmen_data$graduate, aqmen_data$sex, prop.c = TRUE, prop.r = FALSE, prop.t = FALSE, chisq = TRUE)
+
+# To summarise: there is a weak association between sex and graduate status, but there is reason to think
+# this correlation exists in the population from which the sample was drawn (i.e. the finding 'generalises').
+
+<<<<<<< HEAD
+# TASK: explore the association between graduate status and the number of children a person has. We'll start
+# you off by dealing with missing values:
+
+aqmen_data$children_r <- recode(aqmen_data$children, "-9=NA") # recode instances of "-9" as missing data
+table(aqmen_data$children_r) # use this variable for the task
+
+=======
+>>>>>>> fae779b7ce06ec5a1d283b758c537b583e7596b2
+
+# 2.3.3 Categorical and metric variables
+
+# Does workhours vary across sex?
+<<<<<<< HEAD
+
+aqmen_data %>% 
+  group_by(sex) %>% 
+  summarise(mean = mean(workhours, na.rm = TRUE), sd = sd(workhours), median = median(workhours)) 
+
+# QUESTION: why doesn't the above code return the numbers we expect?
+
+# We need to address missing values before summarising our numeric variable (workhours):
+
+summary(aqmen_data$workhours) # we have quite a number of missing values (NA's)
+
+aqmen_data %>% 
+  group_by(sex) %>% 
+  summarise(mean = mean(workhours, na.rm = TRUE), 
+            sd = sd(workhours, na.rm = TRUE), 
+            median = median(workhours, na.rm = TRUE)) 
+
+# It looks like average hours worked per week varies by whether you are male or female. Let's see if we can
+# confirm this interpretation using hypothesis tests:
+
+# H0: average workhours does not vary by sex
+# HA: average workhours varies by sex
+
+t.test(workhours ~ sex, data = aqmen_data) # two-sample independent test of means
+
+aqmen_data %>% 
+  group_by(sex) %>% 
+  summarise(mean = mean(workhours), sd = sd(workhours), median = median(workhours)) 
+
 
 
 # 2.5 Exploratory Data Analysis

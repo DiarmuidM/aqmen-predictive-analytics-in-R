@@ -18,10 +18,9 @@ This three-day workshop will provide a fast-track introduction for researchers w
 
 Topics covered include:
 *	Core concepts in statistics and data analysis (e.g. testing hypotheses, correlation, tests of association)
-*	Multivariate analyses for a range of measures (e.g. metrics, categories and counts)
+*	Statistical models for a variety of outcomes (e.g. numeric, categorical, count)
 *	Longitudinal data analysis
 *	The analysis of durations (e.g. time-to-event analyses)
-*	Modelling trends (e.g. time-series analysis)
 *	Further approaches to predictive analytics
 *	Practical hands-on sessions introducing the methods and techniques outlined above.
 
