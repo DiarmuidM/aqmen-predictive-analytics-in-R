@@ -731,7 +731,7 @@ options(scipen = 999) # surpress display of scientific notation
 
 # 1.11 Predictive Analytics Examples #
 
-# Congratulations on getting through the technical (boring) bit of the activity. To whet your appetite, here are
+# Congratulations on getting through the technical bit of the activity. To whet your appetite, here are
 # some examples of the techniques you will learn over the course of the workshop.
 
 # Import data
@@ -810,9 +810,9 @@ cor.test(auto$price, auto$weight) # statistical significance test of Pearson r c
 # - The files have been specially created by AQMEN for training and MUST not be used in 'real life'.
 # - Do not make copies of these files or distribute them to others.
 
-# We're using these data sets as they are in good shape for analysis, saving us the trouble of getting our data into shape.
+# We're using these data sets as they are in good shape for analysis, saving us the trouble of performing detailed data wrangling.
 
-# The rest of the activities will employ real, messy data from a variety of open data sources.
+# The rest of the activities will employ real, messy open data sets from a variety of sources.
 
 
 # 2.1 Importing and Exploring Data #
@@ -852,13 +852,20 @@ hist(aqmen_data$workhours) # draw a histogram of workhours
 # 2.2.1 Categorical variables
 
 table(aqmen_data$sex) # frequency table of respondent sex; 1 = female, 2 = male
+freq(aqmen_data$sex) # better formatted version of the table() function
+
+# The above functions are a good example of why R is both so powerful and 'fiddly': you can perform the
+# same task using functions that come as standard with R (e.g. table) or from user-written packages (e.g. freq).
+
+# We suggest employing user-written functions as much as possible, for the simple reason that they have been
+# created with the aim of either improving existing functions, or filling a gap. We acknowledge that this does
+# introduce an administrative element to using R (i.e finding, installing and loading packages).
+
+
 ftab_sex <- table(aqmen_data$sex) # store the frequency table in an object to make plotting easier
 barplot(ftab_sex) # create a basic bar chart
 
 summary(as.factor(aqmen_data$sex)) # summary() function also works as long as we tell R that sex is a factor (categorical) variable
-
-prop.table(ftab_sex) # display a table of proportions instead of frequencies
-# TASK: replace 'ftab_sex' with 'aqmen_data$sex'; what happens?
 
 # TASK: produce a frequency table and bar chart of respondent level of education (educ).
 
@@ -882,6 +889,14 @@ cor(aqmen_data$age, aqmen_data$workhours, use = "complete.obs") # Pearson correl
 
 # QUESTION: is the correlation weak or strong?
 
+# Finally, let's fit a line of best fit to the scatterplot:
+
+x11() # open a display window for the graph
+p + geom_point() + geom_smooth(method = "lm") # reuse our p object and combine it with a scatterplot and regression line
+
+# The line of best fit is pretty much flat, which suggests little to no association between the two variables.
+
+
 # We can select a different correlation coefficient if we have ranking variables:
 hrdata <- read_csv("./data_raw/hrdata.csv")
 
@@ -896,10 +911,34 @@ cor(hrdata$sick, hrdata$sales, use = "complete.obs") # Pearson's r correlation c
 # QUESTION: are the two correlation estimates similar in this instance?
 
 
-###
-# FINISHED HERE [10/03/2019]
-#
-###
+# 2.3.2 Categorical variables
+
+table(aqmen_data$graduate, aqmen_data$sex) # crosstabulation of sex and graduate status
+CrossTable(aqmen_data$graduate, aqmen_data$sex, prop.c = TRUE, prop.r = FALSE, prop.t = FALSE, prop.chisq = FALSE) 
+
+# There doesn't look to be much of an association between these variables: 8% of males are graduates compared
+# to 6.5% of females. Let's summarise this association using an appropriate correlation statistic:
+
+CramerV(aqmen_data$graduate, aqmen_data$sex) # returns a correlation between 0 (no association) and 1 (perfect association)
+
+# QUESTION: is the correlation weak or strong?
+
+# Is this difference large enough to suggest a real association, one that exists outwith
+# our sample i.e. in the population from which the sample was drawn?
+
+CrossTable(aqmen_data$graduate, aqmen_data$sex, prop.c = TRUE, prop.r = FALSE, prop.t = FALSE, chisq = TRUE)
+
+# To summarise: there is a weak association between sex and graduate status, but there is reason to think
+# this correlation exists in the population from which the sample was drawn (i.e. the finding 'generalises').
+
+
+# 2.3.3 Categorical and metric variables
+
+# Does workhours vary across sex?
+aqmen_data %>% 
+  group_by(sex) %>% 
+  summarise(mean = mean(workhours), sd = sd(workhours), median = median(workhours)) 
+
 
 
 # 2.5 Exploratory Data Analysis
