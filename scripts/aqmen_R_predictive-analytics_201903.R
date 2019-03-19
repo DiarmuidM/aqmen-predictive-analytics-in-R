@@ -1176,8 +1176,10 @@ scot_char_analysis <- scot_char_subset %>%
 
 # You may be wondering why we went to the trouble of converting our strings to categories if we still have to refer to its
 # values by the string (i.e. "Active"). Well, there is a workaround:
+
 scot_char_analysis <- scot_char_subset %>%
   filter(as.integer(charstatus) == 1) # as.integer() function tells filter() to treat the values of charstatus as numbers
+
 table(scot_char_analysis$charstatus)
 
 # Drop charities with zero income
@@ -1274,7 +1276,7 @@ p + geom_point() + geom_hline(yintercept = 0, size = 1.4, color = "red")
 
 # EXERCISE: run the linear regression again with the following alterations:
 #	- include expenditure as a predictor; is the model a better fit for the data?
-# 	- change the reference level of area of operation to regional
+# - change the reference level of area of operation to regional
 
 
 ##############################################
@@ -1289,15 +1291,18 @@ p + geom_point() + geom_hline(yintercept = 0, size = 1.4, color = "red")
 
 auto <- read_csv("./data_raw/auto.csv") # load in the (in)famous Stata "auto" data
 auto$dom <- as.factor(auto$foreign) == "Domestic" # create a binary indicator of whether a car is a domestic make or not
-summary(auto$dom)
+
+summary(auto$dom) # look at the distribution of the outcome
 
 reg_results <- glm(formula = dom ~ mpg + price,
                    data = auto, family = "binomial") # regress domestic make on miles per gallon and price
 
 summary(reg_results) # summarise the results of the regression
+
 # Doesn't look as neat as it does in other packages but we'll work on tidying up the formatting later. For now:
+
 #	1. Intercept: predicted log odds of car being domestic when all of the other variables take a value of zero (not substantively meaningful not an important component of the estimation)
-# 	2. mpg: predicted decrease in log odds of car being domestic for a one-unit increase in miles per gallon
+# 2. mpg: predicted decrease in log odds of car being domestic for a one-unit increase in miles per gallon
 #	3. price: predicted increase in log odds of car being domestic for a one-unit increase in weight
 #	4. Pr(>|z|): under the null hypothesis (i.e. true effect size = 0), probability of observing a coefficient at least as large as you have
 #	5. AIC: estimates the relative amount of information lost by a given model (useful when comparing models
@@ -1309,6 +1314,7 @@ confint(reg_results)
 
 # There are other model statistics output to the console that we haven't addressed above. Please ask one of the tutors if you are unsure of any of the
 # properties of the model. Let's crack on with a more subtantively interesting and consequential example.
+
 
 # 3.2.2 Charity investigations 
 
@@ -1344,9 +1350,11 @@ char_inv$lcage <- log2(char_inv$charityage + 1)
 mod2 <- glm(formula = investigated ~ constitutionalform + parentcharity + lcage,
             data = char_inv, family = "binomial") # regress investigated on legal form, having a parent charity and organisational age
 summary(mod2)
+
 # TASK: interpret the model with respect to the following:
 #	- the effects of each predictor on the outcome
 #	- whether we can reject the null hypothesis relating to each predictor's effect size
+
 
 # Regression diagnostics #
 
@@ -1359,7 +1367,9 @@ wald.test(b = coef(mod2), Sigma = vcov(mod2), Terms = 2:8)
 
 # There isn't a coefficient of determination (R-squared) statistic for logistic models as there is for OLS (though there
 # are pseudo statistics). Therefore we need to employ other tests:
+
 hoslem.test(char_inv$investigated, fitted(mod2))
+
 # There is a statistically significant difference between the observed (char_inv$investigated) and predicted values for investigated;
 # this tentatively suggests that the model is not a good fit for the data. However, in large samples small differences
 # between observed and predicted values can be significant.
@@ -1374,6 +1384,7 @@ mod2_com # now we have a summary table of regression coefficients from our model
 # Calculate odds ratios i.e. exponentiate the coefficients
 mod2_com <- mod2_com %>%
   mutate(or = exp(estimate), or_conf.high = exp(conf.high), or_conf.low = exp(conf.low))
+
 # mutate() is the rather funny name for the variable create function. Above, we exponentiate the log odds and 
 # confidence intervals in order to generate the odds ratios (i.e. the factor by which the odds change).
 
@@ -1397,19 +1408,19 @@ p + geom_pointrange() +
 mod2_obs <- augment(mod2, data = char_inv) # augment collects observation-level model results (e.g. predicted outcomes)
 View(mod2_obs)
 # augment() returns the following additional variables (Healy, 2019):
-# .fitted ? The fitted values of the model
-# .se.fit ? The standard errors of the fitted values
-# .resid ? The residuals
-# .hat ? The diagonal of the hat matrix
-# .sigma ? An estimate of residual standard deviation when the corresponding observation is dropped from the model
-# .cooksd ? Cook?s distance, a common regression diagnostic
-# .std.resid ? The standardized residuals
+# .fitted - The fitted values of the model
+# .se.fit - The standard errors of the fitted values
+# .resid - The residuals i.e. errors
+# .hat - The diagonal of the hat matrix
+# .sigma - An estimate of residual standard deviation when the corresponding observation is dropped from the model
+# .cooksd - Cook?s distance, a common regression diagnostic
+# .std.resid - The standardized residuals i.e. errors
 
-p <- ggplot(data = reg_obs,
-            mapping = aes(x = .fitted, y = linc)) # plot predicted vs observed values for log of income
+## NOT DONE!!!
+p <- ggplot(data = mod2_obs,
+            mapping = aes(x = .fitted, y = investigated)) # plot predicted vs observed values for investigated status
 x11()
 p + geom_point()
-# The predictions don't look to be great e.g. we don't predict low income for many charities.
 
 
 ##############################################
@@ -1424,12 +1435,15 @@ p + geom_point()
 
 psim <- read_csv("./data_raw/poisson_sim.csv") # simulated data created by Institute for Digital Research and Education at UCLA
 psim$prog <- factor(psim$prog, levels=1:3, labels=c("General", "Academic", "Vocational")) # create a factor variable of program
+
 ggplot(data = psim) + geom_histogram(mapping = aes(num_awards)) # histogram of number of awards
+
 summary(mod1 <- glm(num_awards ~ prog + math, family="poisson", data=psim)) # regress number of awards on program and maths score
 
 # An important point to note: the dependent variable in a Poisson model is automatically log transformed.
 
 # Doesn't look as neat as it does in other packages but we'll work on tidying up the formatting later. For now:
+
 #	1. Intercept: predicted number of awards (log) when all of the other variables take a value of zero (not substantively meaningful not an important component of the estimation)
 #	2. progAcademic: predicted increase in number of awards (log) for being in an academic program compared to a general program
 #	3. progVocational: predicted increase in number of awards (log) for being in a vocational program compared to a general program
@@ -1445,6 +1459,7 @@ summary(mod1 <- glm(num_awards ~ prog + math, family="poisson", data=psim)) # re
 # - linear regression estimates values in the range of minus infinity to plus infinity; count variables only take positive integers
 # - count variables often have a skewed, zero-inflated distribution that require alternative approaches to standard OLS
 # - count variables have a non-normal error distribution (i.e. Poisson)
+
 
 # 3.3.2 Land and Buildings Transaction Tax (LBTT) 
 
@@ -1490,14 +1505,104 @@ lbtt <- lbtt %>%
 
 nrow(lbtt) # 460 observations remaining in the data set
 
+
 # Estimate a multivariate count regression #
 
 # We'll specify the following model: estimate the number of transactions as a function of transaction type (categorical), 
 # property type (categorical), property valuation band (categorical) and transaction year (ordinal categorical).
 
 summary(mod3 <- glm(num_transactions ~ tran_type + prop_type + prop_band + year, family="poisson", data=lbtt))
-# TASK: 
-### FINISHED HERE!
+
+# TASK: interpret the model with respect to the following:
+#	- the effects of each predictor on the outcome
+#	- whether we can reject the null hypothesis relating to each predictor's effect size
+
+
+# Regression diagnostics #
+
+# Check if the legal form field is statistically significant overall
+wald.test(b = coef(mod3), Sigma = vcov(mod3), Terms = 12:15) 
+# Yes it is.
+# "2:8" identifies the number of the variable in the model i.e. the intercept is 1, constitutionalform9 is 2...
+
+# Overall goodness-of-it
+
+# There isn't a coefficient of determination (R-squared) statistic for logistic models as there is for OLS (though there
+# are pseudo statistics). Therefore we need to employ other tests:
+
+hoslem.test(lbtt$num_transactions, fitted(mod3))
+
+# There is a no statistically significant difference between the observed (lbtt$num_transactions) 
+# and predicted values for number of transactions; this suggests that the model is a good fit for the data.
+
+
+# Graph regression results #
+
+# Let's capture model summary statistics using some of the functions provided by the `broom` package:
+mod3_com <- tidy(mod3, conf.int = TRUE) # use `broom`'s tidy() function to extract model coefficient information
+mod3_com # now we have a summary table of regression coefficients from our model; let's do some tidying up before graphing
+
+# Calculate odds ratios i.e. exponentiate the coefficients
+mod3_com <- mod3_com %>%
+  mutate(cr = exp(estimate), or_conf.high = exp(conf.high), or_conf.low = exp(conf.low))
+
+# mutate() is the rather funny name for the variable create function. Above, we exponentiate the log count and 
+# confidence intervals in order to generate the count ratios (i.e. the factor by which the count changes).
+
+mod3_com <- filter(mod3_com, term != "(Intercept)") # remove the intercept from the model table
+
+# Plot the results of the regression, this time with some graph formatting:
+p <- ggplot(mod3_com, mapping = aes(x = reorder(term, estimate), y = estimate, ymin = conf.low, ymax = conf.high))
+x11()
+p + geom_pointrange() + 
+  coord_flip() +
+  theme_classic() +
+  labs(x = "Predictor", y = "Log Count", title = "Predicting LBTT", subtitle = "Scottish Government (2015-2019)",
+       caption = "Data derived from Scottish Government")
+
+# TASK: replicate the graph above but for the count ratios (and respective confidence intervals).
+
+# Making predictions #
+
+# We can calculate and plot predicted outcomes for individuals and groups in our data:
+mod3_obs <- augment(mod3, data = lbtt) # augment collects observation-level model results (e.g. predicted outcomes)
+View(mod3_obs)
+
+# augment() returns the following additional variables (Healy, 2019):
+# .fitted - The fitted values of the model
+# .se.fit - The standard errors of the fitted values
+# .resid - The residuals i.e. errors
+# .hat - The diagonal of the hat matrix
+# .sigma - An estimate of residual standard deviation when the corresponding observation is dropped from the model
+# .cooksd - Cook?s distance, a common regression diagnostic
+# .std.resid - The standardized residuals i.e. errors
+
+mod3_obs$pr_count <- exp(mod3_obs$.fitted) # exponentiate the log count to get the actual predicted count
+
+p <- ggplot(data = mod3_obs,
+            mapping = aes(x = pr_count, y = num_transactions)) # plot predicted vs observed values for number of transactions
+x11()
+p + geom_point()
+# The predictions are ok: when the actual count is low so is the predicted value; the model loses a bit of predictive
+# power when the number of transactions is higher e.g. a predicted count of ~5000 applies to an actual count of 
+# 3000-5000.
+
+
+# Regression diagnostics #
+
+# We should perform some checks of some of assumptions underpinning the regression model:
+p <- ggplot(data = mod3_obs,
+            mapping = aes(x = .resid)) # check for normality
+x11()
+p + geom_histogram() # the residuals are slightly negatively skewed, indicating there are some observations where the predicted
+# and actual values differ considerably.
+
+p <- ggplot(data = mod3_obs,
+            mapping = aes(x = .fitted, y = .resid)) # check for homoskedasticity
+x11()
+p + geom_point() + geom_hline(yintercept = 0, size = 1.4, color = "red")
+# There is a strong pattern in the distribution of residuals and fitted values, as though the range widens 
+# for large fitted values. Therefore, it is probably worth estimating the regression using robust standard errors.
 
 
 
@@ -1520,15 +1625,15 @@ summary(mod3 <- glm(num_transactions ~ tran_type + prop_type + prop_band + year,
 # 12 tablespoons vegetable oil / I prefer beef dripping
 
 # 1. Whisk the eggs, flour, salt, and milk together really well in a bowl 
-to make your batter. 
+# to make your batter. 
 
 # 2. Pour the batter into a jug, and let it sit for 30 minutes before you use it. 
 
 # 3. Turn your oven up to the highest setting and place the baking tray in the 
-oven to heat up for 5 minutes. 
+# oven to heat up for 5 minutes. 
 
 # 4. Place 1 table spoon of oil in each indentation, 
-and put the tray back into the oven and heat until oil is very hot.
+# and put the tray back into the oven and heat until oil is very hot.
 
 # 5. Open oven door, slide the tray out, and carefully pour the batter in. 
 
