@@ -967,7 +967,7 @@ table(aqmen_data$children_r) # use this variable for the task
 
 aqmen_data %>% 
   group_by(sex) %>% 
-  summarise(mean = mean(workhours, na.rm = TRUE), sd = sd(workhours), median = median(workhours)) 
+  summarise(mean = mean(workhours), sd = sd(workhours), median = median(workhours)) 
 
 # QUESTION: why doesn't the above code return the numbers we expect?
 
@@ -1416,11 +1416,6 @@ View(mod2_obs)
 # .cooksd - Cook?s distance, a common regression diagnostic
 # .std.resid - The standardized residuals i.e. errors
 
-## NOT DONE!!!
-p <- ggplot(data = mod2_obs,
-            mapping = aes(x = .fitted, y = investigated)) # plot predicted vs observed values for investigated status
-x11()
-p + geom_point()
 
 
 ##############################################
