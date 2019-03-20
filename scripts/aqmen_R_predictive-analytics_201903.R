@@ -1340,7 +1340,10 @@ names(char_inv) # list of variable names
 char_inv$constitutionalform <- factor(char_inv$constitutionalform)
 char_inv$constitutionalform <- relevel(char_inv$constitutionalform, ref = 8)
 
-char_inv$lcage <- log2(char_inv$charityage + 1) 
+char_inv$lcage <- log(char_inv$charityage + 1) 
+
+# QUESTION: why do we add 1 to charity age before log transforming?
+
 
 # Estimate a multivariate logistic regression #
 
@@ -1444,7 +1447,7 @@ summary(mod1 <- glm(num_awards ~ prog + math, family="poisson", data=psim)) # re
 #	3. progVocational: predicted increase in number of awards (log) for being in a vocational program compared to a general program
 #	4. math: predicted increase in number of awards (log) for a one-unit increase in math score
 #	5. Pr(>|z|): under the null hypothesis (i.e. true effect size = 0), probability of observing a coefficient at least as large as you have
-#	6. AIC: estimates the relative amount of information lost by a given model (useful when comparing models
+#	6. AIC: estimates the relative amount of information lost by a given model (useful when comparing models)
 #	7. Null and Residual deviance: measure of goodness-of-fit i.e. how well the model fits the data (useful when comparing models)
 # 8. Deviance Residuals: the distribution of the residuals (i.e. difference between predicted and observed values). Deviance residuals are approximately normally distributed if the model is specified correctly       
 
@@ -1537,12 +1540,12 @@ hoslem.test(lbtt$num_transactions, fitted(mod3))
 mod3_com <- tidy(mod3, conf.int = TRUE) # use `broom`'s tidy() function to extract model coefficient information
 mod3_com # now we have a summary table of regression coefficients from our model; let's do some tidying up before graphing
 
-# Calculate odds ratios i.e. exponentiate the coefficients
+# Calculate incident rate ratios i.e. exponentiate the coefficients
 mod3_com <- mod3_com %>%
-  mutate(cr = exp(estimate), or_conf.high = exp(conf.high), or_conf.low = exp(conf.low))
+  mutate(irr = exp(estimate), irr_conf.high = exp(conf.high), irr_conf.low = exp(conf.low))
 
 # mutate() is the rather funny name for the variable create function. Above, we exponentiate the log count and 
-# confidence intervals in order to generate the count ratios (i.e. the factor by which the count changes).
+# confidence intervals in order to generate the incident rate ratios (i.e. the factor by which the count changes).
 
 mod3_com <- filter(mod3_com, term != "(Intercept)") # remove the intercept from the model table
 
@@ -1569,7 +1572,7 @@ View(mod3_obs)
 # .resid - The residuals i.e. errors
 # .hat - The diagonal of the hat matrix
 # .sigma - An estimate of residual standard deviation when the corresponding observation is dropped from the model
-# .cooksd - Cook?s distance, a common regression diagnostic
+# .cooksd - Cook's distance, a common regression diagnostic
 # .std.resid - The standardized residuals i.e. errors
 
 mod3_obs$pr_count <- exp(mod3_obs$.fitted) # exponentiate the log count to get the actual predicted count

@@ -157,7 +157,7 @@ x11()
 p + geom_point() # pretty good match to the results in the paper
 
 # Summary: linear regression works pretty well for this outcome as charity density is a continuous measure (e.g. 23.5).
-
+# If charity density was rounded to the nearest whole number, we might consider alternative approaches e.g. Poisson.
 
 # Poisson regression
 
@@ -187,4 +187,48 @@ nagelkerke(poi_reg2)
 # QUESTION: which model is a better fit for the data?
 
 
+# Produce predicted values of the outcome using the results of the statistical model:
+
+char_den_prediction <- augment(poi_reg, data = char_den) # augment adds variables to the data set
+names(char_den_prediction) # anything variable with the "." prefix is a new variable added to the data set
+
+# .fitted = predicted number of charities per 5000 residents for each local authority;
+# however, the outcome variable has been log transformed for inclusion in a poisson regression.
+
+# Therefore we need to exponentiate the predicted values to go from log to actual values of the outcome.
+
+char_den_prediction$pr_count <- exp(char_den_prediction$.fitted)
+summary(char_den_prediction$pr_count)
+View(char_den_prediction$pr_count)
+
+char_den_prediction$pr_count <- round(char_den_prediction$pr_count, 0) # round the predicted count to nearest whole number
+
+# Create a subset of the data set with a limited number of variables:
+char_den_subset <- char_den_prediction %>% 
+  select(la_name, charpop, pr_count)
+
+View(char_den_subset) # view the subsetted data set
+
+char_den_subset %>% 
+  filter(la_name == "Cambridge") # view the results for a particular local authority
+
+# If you remember the results of the linear model, the poisson prediction is not as good for this local authority
+# as the prediction from the linear regression.
+
+
+# We should perform some checks of some of assumptions underpinning the regression model:
+
+p <- ggplot(data = char_den_prediction,
+            mapping = aes(x = .resid)) # check for normality
+x11()
+p + geom_histogram() # the residuals are slightly negatively skewed, indicating there are some observations where the predicted
+# and actual values differ considerably. However, the distribution is approximately normal (an assumption of regression modelling).
+
+p <- ggplot(data = char_den_prediction,
+            mapping = aes(x = pr_count, y = .resid)) # check for homoscedasticity
+x11()
+p + geom_point() + geom_hline(yintercept = 0, size = 1.4, color = "red")
+
+# There looks to be a strong pattern in the distribution of residuals (errors) and predicted count. 
+# Therefore, it is probably worth estimating the regression using robust standard errors.
 
