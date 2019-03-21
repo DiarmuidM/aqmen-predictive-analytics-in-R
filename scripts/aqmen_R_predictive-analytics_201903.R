@@ -1720,7 +1720,11 @@ char_fin$aoo <- as.factor(char_fin$aoo)
 levels(char_fin$aoo) # 1 = Local, 2 = Regional, 3 = National
 table(char_fin$aoo)
 
-ols <- plm(linc ~ age + comp + aoo, data = char_fin_pd, model= "pooling") # regress income (log) on age, company status and area of operation
+# Estimate a linear regression # 
+
+# NOTE TO DMD - FIGURE OUT HOW TO ESTIMATE USING PLM
+
+ols <- lm(linc ~ age + comp + aoo, data = char_fin) # regress income (log) on age, company status and area of operation
 summary(ols)
 
 # TASK: interpret the results of the regression model.
@@ -1976,6 +1980,8 @@ cyear <- year(cdate) # get current year
 char_regd$regy <- year(char_regd$regdate) # extract year from registration date
 char_regd$remy <- year(char_regd$remdate) # year charity was removed from the Register
 
+names(char_regd) # check if the new variables were created
+
 char_regd <- char_regd %>% 
   mutate(los = ifelse(!is.na(remy), remy - regy, NA))
 
@@ -1986,6 +1992,7 @@ char_regd <- char_regd %>%
 # 4. The new variable is added to the existing data set char_regd.
 
 hist(char_regd$los)
+summary(char_regd$los)
 char_regd[1:1000,] # view the first 1000 rows
 
 char_regd_merge <- char_regd %>% # keep selected variables, drop duplicates and sort by charity number
@@ -2013,6 +2020,8 @@ char_reg <- char_reg %>%
 char_regd_merge <- read_rds("./temp/ew_los_201903.rds") # load in length of survival data set
 char_surv <- merge(char_reg, char_regd_merge, id = "regno")
 
+View(char_surv)
+
 char_aoo <- read_rds("./data_raw/charity-aoo-reference-list-201902.rds") # load in area of operation data set
 View(char_aoo)
 
@@ -2021,7 +2030,9 @@ char_aoo$aoo <- ordered(char_aoo$aootype, levels = c("B", "A", "D"), labels = c(
 levels(char_aoo$aoo) # view categories of area of operation
 table(as.numeric(char_aoo$aoo)) # look at codes representing each category
 
+
 char_surv <- merge(char_surv, char_aoo, id = "regno") # merge with area of operation data
+
 
 nrow(char_surv) # we've lost some observations due to only having area of operation information for a subset of charities
 View(char_surv) # successful merge
@@ -2058,9 +2069,6 @@ summary(mod1)
 
 # Create the variables necessary for the model
 
-# Time
-char_surv$year <- char_surv$regy # use registration year as the time variable (this is fine as there are no gaps in this measure)
-
 # Event
 char_surv$diss <- as.numeric(char_surv$orgtype == "RM") # a charity is dissolved if its registration status == "RM"
 table(char_surv$diss) 
@@ -2070,7 +2078,7 @@ hist(char_surv$los) # currently this is only calculated for charities that have 
 # are still operating:
 
 char_surv <- char_surv %>% 
-  mutate(st = ifelse(is.na(remy), 2019 - regy, remy - regy))
+  mutate(st = ifelse(is.na(remy), cyear - regy, remy - regy))
 
 # There's a lot to unpack with the code above:
 # 1. We create a new variable called "st" based on a conditional.
@@ -2079,14 +2087,16 @@ char_surv <- char_surv %>%
 # 4. The new variable is added to the existing data set char_surv.
 
 hist(char_surv$st)
+summary(char_surv$st)
 
 
 # Let's state some questions in order to focus our analysis:
 
-# 1. What is the probability of surviving to a certain point in time?
-# 2. What is the average survival time?
+# Q1. What is the probability of surviving to a certain point in time?
+# Q2. What is the average survival time?
 
-# 1. A Kaplan-Meier (KM) plot summarises the distribution of the survival time variable.
+
+# 1. A Kaplan-Meier (KM) plot summarises the distribution of the survival time variable:
 
 Surv(char_surv$st, char_surv$diss)[1:10] # look at the survival time for the first ten observations
 # QUESTION: what do you think the plus sign ("+") signifies?
@@ -2098,7 +2108,6 @@ plot(survfit(Surv(st, diss) ~ 1, data = char_surv),
 
 # QUESTION: what is the probability of surviving until 20 years old? HINT: trace your finger up from the x-axis...
 # REMEMBER: the survival curve is a probability distribution
-
 
 sest <- survfit(Surv(st, diss) ~ 1, data = char_surv)
 names(sest) # the survfit() function returns a number of variables that we can use to estimate survival probabilities:
@@ -2119,7 +2128,7 @@ survfit(Surv(st, diss) ~ 1, data = char_surv) # just call this function again, w
 
 median(char_surv$st[char_surv$diss==1], na.rm = TRUE)
 # The above median() function calculates the average survival time for charities that have dissolved.
-# This ia an incorrect estimate as it ignores the fact that censored charities also contribute survival time.
+# This is an incorrect estimate as it ignores the fact that censored charities also contribute survival time.
 
 
 # Comparing survival times between types of charities
@@ -2146,11 +2155,12 @@ summary(survfit(Surv(st, diss) ~ aoo, data = char_surv), times = 20) # the forma
 # by area of operation:
 
 survdiff(Surv(st, diss) ~ aoo, data = char_surv)
+freq(char_surv$aoo)
 
 # QUESTION: can we conclude that there are statistically significant differences in overall survival by area of operation?
 
 
-# Regression Model of Survival Hazard
+# 5.3 Regression Model of Survival Hazard
 
 # The Cox regression model assesses the relative effect of predictors on the variation in an outcome.
 
@@ -2163,7 +2173,7 @@ survdiff(Surv(st, diss) ~ aoo, data = char_surv)
 # - proportional hazards i.e. the effect of a predictor does not vary over time
 
 cox_mod <- coxph(Surv(st, diss) ~ aoo, data = char_surv) # estimate the model
-summary(cox_mod) # Rsquare is extremely low - this model has very little explanatory power
+summary(cox_mod) # R-squared is extremely low - this model has very little explanatory power
 # We see that the log odds of dissolution are higher for Regional charities compared to Local organisations;
 # National charities have lower log odds than their Local peers.
 
