@@ -999,6 +999,7 @@ t.test(workhours ~ sex, data = aqmen_data) # two-sample independent test of mean
 aqmen_data$married <- aqmen_data$marstat==1 # create a dummy variable indicating married status
 aqmen_data$married <- factor(aqmen_data$married, labels = c("Unmarried", "Married")) # label the values of this variable
 table(aqmen_data$married)
+unclass(aqmen_data$married)
 
 aqmen_data$sex <- factor(aqmen_data$sex, labels = c("Male", "Female")) # set the sex variable as categorical
 
@@ -1169,6 +1170,8 @@ summary(scot_char_subset$aoo)
 scot_char_subset$aoo # recode values of this variable to produce local, regional, national and overseas categories
 scot_char_subset$aoo_r <- factor(recode(as.integer(scot_char_subset$aoo),"c(1,8)=1; c(2,3)=2; c(4,6)=3; c(5,7)=4"))
 table(scot_char_subset$aoo_r)
+
+# FIX RECODE ISSUE ####
 
 # Drop inactive charities
 scot_char_analysis <- scot_char_subset %>%
